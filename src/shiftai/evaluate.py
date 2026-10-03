@@ -15,7 +15,9 @@ from pathlib import Path
 
 import numpy as np
 
+from .grading import grade
 from .profiler import load_records
+from .tasks import Question
 
 
 @dataclass
@@ -35,8 +37,16 @@ class ProfileMatrix:
         return not np.isnan(self.energy).all()
 
 
-def build_matrix(records: list[dict], models: list[str]) -> ProfileMatrix:
-    """Keep only questions that every model answered, in a stable order."""
+def build_matrix(
+    records: list[dict],
+    models: list[str],
+    questions: dict[str, Question] | None = None,
+) -> ProfileMatrix:
+    """Keep only questions that every model answered, in a stable order.
+
+    When the questions are given, every stored reply is re-graded with the
+    current grader, so a grading fix never requires re-running the models.
+    """
     by_key = {(r["model"], r["qid"]): r for r in records}
     task_of = {r["qid"]: r["task"] for r in records}
     qids = sorted(q for q in task_of if all((m, q) in by_key for m in models))
@@ -48,7 +58,7 @@ def build_matrix(records: list[dict], models: list[str]) -> ProfileMatrix:
     for i, q in enumerate(qids):
         for j, m in enumerate(models):
             r = by_key[(m, q)]
-            correct[i, j] = r["correct"]
+            correct[i, j] = grade(questions[q], r["reply"]) if questions else r["correct"]
             latency[i, j] = max(r["total_s"] - r["load_s"], 0.0)
             if r.get("energy_j") is not None:
                 energy[i, j] = r["energy_j"]
@@ -56,11 +66,15 @@ def build_matrix(records: list[dict], models: list[str]) -> ProfileMatrix:
     return ProfileMatrix(qids, [task_of[q] for q in qids], models, correct, latency, energy, tokens)
 
 
-def load_matrix(run_dir: str | Path, models: list[str] | None = None) -> ProfileMatrix:
+def load_matrix(
+    run_dir: str | Path,
+    models: list[str] | None = None,
+    questions: dict[str, Question] | None = None,
+) -> ProfileMatrix:
     run_dir = Path(run_dir)
     if models is None:
         models = json.loads((run_dir / "meta.json").read_text())["models"]
-    return build_matrix(load_records(run_dir / "records.jsonl"), models)
+    return build_matrix(load_records(run_dir / "records.jsonl"), models, questions)
 
 
 def split_indices(n: int, seed: int = 0, fractions=(0.6, 0.2, 0.2)) -> tuple[np.ndarray, np.ndarray, np.ndarray]:

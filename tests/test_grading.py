@@ -32,6 +32,12 @@ def test_choice_ignores_article_a_and_unoffered_letters():
     assert extract_choice("E", 4) is None
 
 
+def test_choice_ignores_a_reply_that_repeats_the_question():
+    # Seen from qwen3.5:0.8b in the real profiling run.
+    assert extract_choice("A stem-boring beetle consumes wood by eating", 4) is None
+    assert extract_choice("A. stem-boring beetle", 4) == "A"
+
+
 def test_grade_math_and_choice():
     math = Question(id="m", task="gsm8k", question="?", answer="72")
     assert grade(math, "so the answer is\nAnswer: 72")

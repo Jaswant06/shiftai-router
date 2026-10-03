@@ -34,9 +34,11 @@ def extract_choice(reply: str, n_choices: int) -> str | None:
     """The chosen option letter, restricted to the letters actually offered."""
     valid = LETTERS[:n_choices]
     text = reply.strip()
-    # Letters are matched case-sensitively so the article "a" never counts as A.
+    # Letters are matched case-sensitively so the article "a" never counts as A,
+    # and a capital letter followed by a lowercase word ("A stem-boring beetle")
+    # is read as a sentence, not as choosing option A.
     patterns = [
-        rf"^\(?([{valid}])\)?(?:[.):\s]|$)",                         # "B", "B.", "(B) ..."
+        rf"^\(?([{valid}])\)?(?:[.):]|\s*$)",                       # "B", "B.", "(B) ..."
         rf"(?i:answer)\s*(?i:is)?\s*[:=]?\s*\(?\**([{valid}])\b",   # "Answer: B", "the answer is B"
         rf"(?i:option)\s*\(?([{valid}])\b",                          # "option B"
     ]
@@ -44,7 +46,7 @@ def extract_choice(reply: str, n_choices: int) -> str | None:
         match = re.search(pattern, text, re.MULTILINE)
         if match:
             return match.group(1)
-    standalone = set(re.findall(rf"\b([{valid}])\b", text))
+    standalone = set(re.findall(rf"\b([{valid}])\b(?!\s+[a-z])", text))
     return standalone.pop() if len(standalone) == 1 else None
 
 

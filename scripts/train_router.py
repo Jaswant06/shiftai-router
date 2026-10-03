@@ -79,11 +79,11 @@ def main() -> None:
     args = parser.parse_args()
 
     client = OllamaClient()
-    matrix = load_matrix(args.run)
+    questions = {q.id: q for q in load_questions(args.questions)}
+    matrix = load_matrix(args.run, questions=questions)  # re-graded with the current grader
     models, largest = matrix.models, len(matrix.models) - 1
     print(f"{len(matrix.qids)} questions answered by all of: {', '.join(models)}")
 
-    questions = {q.id: q for q in load_questions(args.questions)}
     # The router sees what a user would type, not the benchmark's format instruction.
     texts = [questions[q].feature_text() for q in matrix.qids]
     kinds = [questions[q].kind for q in matrix.qids]
