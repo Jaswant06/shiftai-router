@@ -16,9 +16,9 @@ LETTERS = "ABCDEFGH"
 MATH_TASKS = {"gsm8k"}
 CHOICE_TASKS = {"mmlu", "arc_easy", "arc_challenge"}
 
-# Generation limits per task family. Math needs room for working (512 truncated
-# some verbose 9B replies in the pilot); multiple
-# choice only needs the letter, which keeps profiling time sensible.
+# Generation limits per task family. Math needs room for working (512 tokens
+# cut off some verbose 9B replies in the pilot); multiple choice only needs the
+# letter, which keeps profiling time sensible.
 MAX_TOKENS = {"math": 1024, "choice": 16}
 
 MATH_INSTRUCTION = (
