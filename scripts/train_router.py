@@ -84,9 +84,10 @@ def main() -> None:
     print(f"{len(matrix.qids)} questions answered by all of: {', '.join(models)}")
 
     questions = {q.id: q for q in load_questions(args.questions)}
-    texts = [questions[q].prompt() for q in matrix.qids]
+    # The router sees what a user would type, not the benchmark's format instruction.
+    texts = [questions[q].feature_text() for q in matrix.qids]
     kinds = [questions[q].kind for q in matrix.qids]
-    emb = cached_embeddings(texts, client, args.run / "embeddings.npy")
+    emb = cached_embeddings(texts, client, args.run)
     x = featurize(emb, texts)
 
     train, val, test = split_indices(len(texts), seed=args.seed)

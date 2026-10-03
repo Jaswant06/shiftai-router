@@ -8,6 +8,7 @@ that cost is measured and reported as router overhead.
 
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 
 import numpy as np
@@ -40,13 +41,13 @@ def featurize(embeddings: np.ndarray, texts: list[str]) -> np.ndarray:
     return np.hstack([embeddings, length_feature(texts)])
 
 
-def cached_embeddings(texts: list[str], client: OllamaClient, path: str | Path) -> np.ndarray:
-    """Embed once and reuse: profiling sets are embedded many times while iterating."""
-    path = Path(path)
+def cached_embeddings(texts: list[str], client: OllamaClient, folder: str | Path) -> np.ndarray:
+    """Embed once and reuse. The cache file is keyed by a hash of the exact
+    texts, so changing the inputs can never silently reuse stale vectors."""
+    digest = hashlib.sha1("\x00".join([EMBED_MODEL, EMBED_PREFIX, *texts]).encode()).hexdigest()[:12]
+    path = Path(folder) / f"embeddings-{digest}.npy"
     if path.exists():
-        cached = np.load(path)
-        if cached.shape[0] == len(texts):
-            return cached
+        return np.load(path)
     vectors = embed(texts, client)
     path.parent.mkdir(parents=True, exist_ok=True)
     np.save(path, vectors)

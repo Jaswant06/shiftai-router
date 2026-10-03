@@ -54,6 +54,15 @@ class Question:
         options = "\n".join(f"{LETTERS[i]}. {c}" for i, c in enumerate(self.choices))
         return f"{CHOICE_INSTRUCTION}\n\nQuestion: {self.question}\n{options}"
 
+    def feature_text(self) -> str:
+        """What a real user would type: the question and any options, without
+        the benchmark's answer-format instruction. The router learns from this,
+        so its training inputs look like live prompts."""
+        if not self.choices:
+            return self.question
+        options = "\n".join(f"{LETTERS[i]}. {c}" for i, c in enumerate(self.choices))
+        return f"{self.question}\n{options}"
+
     def messages(self) -> list[dict]:
         return [{"role": "user", "content": self.prompt()}]
 

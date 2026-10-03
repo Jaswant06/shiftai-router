@@ -61,10 +61,12 @@ def cmd_setup(args) -> None:
 
 
 def cmd_ask(args) -> None:
+    from .calibrate import HardwareProfile
     from .router import Router, RouterArtifact, explain
 
     artifact = RouterArtifact.load(args.artifact) if args.artifact else None
-    router = Router(artifact=artifact)
+    profile = HardwareProfile.load(Path(args.profile)) if args.profile else None
+    router = Router(artifact=artifact, profile=profile)
     if args.dry_run:
         print(explain(router.decide(args.prompt, args.quality)))
         return
@@ -119,6 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--explain", action="store_true", help="show why the model was chosen")
     p.add_argument("--dry-run", action="store_true", help="show the decision without generating")
     p.add_argument("--artifact", help="use a router artifact file instead of the bundled one")
+    p.add_argument("--profile", help="use a hardware profile file instead of ~/.shiftai/hardware.json")
     p.set_defaults(func=cmd_ask)
 
     p = sub.add_parser("bench", help="profile models on the benchmark question set")
