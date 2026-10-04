@@ -3,7 +3,7 @@
 import numpy as np
 
 from shiftai.evaluate import ProfileMatrix, oracle_choice, score_policy
-from shiftai.policy import choose, delta_for, simulate, tune_deltas
+from shiftai.policy import choose, pick_target, simulate, tune_deltas
 
 
 def test_choose_takes_cheapest_model_close_enough_to_largest():
@@ -50,11 +50,11 @@ def test_tuned_delta_meets_target_on_validation():
     assert table[0.9] >= table[1.0]
 
 
-def test_delta_for_rounds_target_up():
-    table = {0.9: 0.2, 0.95: 0.1, 1.0: 0.0}
-    assert delta_for(table, 95) == 0.1
-    assert delta_for(table, 92) == 0.1
-    assert delta_for(table, 99.5) == 0.0
+def test_pick_target_rounds_up_and_caps_at_strictest():
+    table = {0.9: 0.2, 0.95: 0.1, 0.99: 0.05}
+    assert pick_target(table, 95) == 0.1
+    assert pick_target(table, 92) == 0.1
+    assert pick_target(table, 100) == 0.05
 
 
 def test_oracle_and_scoring():

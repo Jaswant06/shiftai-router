@@ -1,14 +1,15 @@
-"""Turn a prompt into the feature vector the capability predictor reads.
+"""Turn a prompt into what the capability predictor reads.
 
-Only information available before any expensive model runs is used: an
-embedding from a small local embedding model and the prompt's length. The
-embedding model is tiny (137M parameters), so this costs milliseconds, and
-that cost is measured and reported as router overhead.
+Only information available before any expensive model runs is used: the
+prompt's type (multiple choice or open-ended) and an embedding from a small
+local embedding model. The embedding model is tiny (137M parameters), so this
+costs milliseconds, and that cost is measured and reported as router overhead.
 """
 
 from __future__ import annotations
 
 import hashlib
+import re
 from pathlib import Path
 
 import numpy as np
@@ -20,6 +21,15 @@ EMBED_MODEL = "nomic-embed-text"
 EMBED_PREFIX = "classification: "
 MAX_CHARS = 4000
 
+KINDS = ("choice", "open")
+# Two or more lines that start like "A. ..." or "(B) ..." mean the prompt lists options.
+_OPTION_LINE = re.compile(r"^\s*\(?[A-H][.)]\s+\S", re.MULTILINE)
+
+
+def prompt_kind(text: str) -> str:
+    """'choice' when the prompt lists lettered options, otherwise 'open'."""
+    return "choice" if len(_OPTION_LINE.findall(text)) >= 2 else "open"
+
 
 def embed(texts: list[str], client: OllamaClient, batch_size: int = 32) -> np.ndarray:
     """L2-normalised embeddings, one row per text."""
@@ -30,15 +40,6 @@ def embed(texts: list[str], client: OllamaClient, batch_size: int = 32) -> np.nd
     vectors = np.asarray(rows, dtype=np.float32)
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     return vectors / np.maximum(norms, 1e-12)
-
-
-def length_feature(texts: list[str]) -> np.ndarray:
-    return np.log1p([len(t) for t in texts]).astype(np.float32)[:, None]
-
-
-def featurize(embeddings: np.ndarray, texts: list[str]) -> np.ndarray:
-    """Concatenate the embedding with the log prompt length."""
-    return np.hstack([embeddings, length_feature(texts)])
 
 
 def cached_embeddings(texts: list[str], client: OllamaClient, folder: str | Path) -> np.ndarray:

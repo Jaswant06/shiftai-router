@@ -17,7 +17,8 @@ from __future__ import annotations
 
 import numpy as np
 
-TAU_GRID = (0.80, 0.85, 0.90, 0.95, 0.99, 1.00)
+# 100% is not tuned: asking for all of the largest model's quality means using it.
+TAU_GRID = (0.80, 0.85, 0.90, 0.95, 0.99)
 DELTA_GRID = np.round(np.arange(0.0, 1.0001, 0.005), 3)
 
 
@@ -38,7 +39,7 @@ def choose(
         if probs[name] >= bar:
             if name == largest:
                 return name, "no cheaper model is predicted to keep enough quality"
-            return name, f"cheapest model predicted to keep at least {1 - delta:.0%} of the largest model's quality"
+            return name, "cheapest model predicted close enough to the largest for your quality target"
     return largest, "no cheaper model is predicted to keep enough quality"
 
 
@@ -75,8 +76,11 @@ def tune_deltas(
     return table
 
 
-def delta_for(table: dict[float, float], quality: float) -> float:
-    """Delta for a requested quality (0-100), rounding the target up to be safe."""
+def pick_target(table: dict, quality: float):
+    """Settings for a requested quality (0-100), rounding the target up to be safe.
+
+    A request stricter than anything tuned gets the strictest tuned settings.
+    """
     tau = quality / 100 if quality > 1 else quality
     eligible = [t for t in sorted(table) if t >= tau - 1e-9]
-    return table[eligible[0]] if eligible else 0.0
+    return table[eligible[0]] if eligible else table[max(table)]

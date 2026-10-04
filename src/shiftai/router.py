@@ -8,27 +8,22 @@ model cost here, right now?).
 from __future__ import annotations
 
 import json
-import re
 import time
 from dataclasses import dataclass, field
 from importlib import resources
 from pathlib import Path
 
-import numpy as np
-
 from .calibrate import HardwareProfile
 from .discovery import loaded_models
-from .features import embed, featurize
+from .features import embed, prompt_kind
 from .ollama import ChatResult, OllamaClient
-from .policy import choose, delta_for
+from .policy import choose, pick_target
 from .predictor import CapabilityPredictor
 from .system import ResourceState, resource_state
 
 # Below this absolute predicted quality for the largest model, warn the user
 # even though routing to it is still the best available choice.
 WARN_BELOW = 0.5
-# Treat a prompt with lettered options as multiple choice when estimating output length.
-_CHOICE_PATTERN = re.compile(r"^\s*\(?[A-H][.)]\s+\S", re.MULTILINE)
 CHARS_PER_TOKEN = 4.0
 
 
@@ -37,16 +32,18 @@ class RouterArtifact:
     """Everything learned offline that ships inside the package."""
 
     ladder: list[str]
-    predictor: CapabilityPredictor
-    deltas: dict[float, float]
+    # One predictor per cluster count; each quality target uses the count that
+    # saved the most on development data, with its own tuned delta.
+    predictors: dict[int, CapabilityPredictor]
+    targets: dict[float, dict]  # tau -> {"clusters": k, "delta": d}
     expected_tokens: dict[str, dict[str, float]]
     meta: dict = field(default_factory=dict)
 
     def save(self, path: str | Path) -> None:
         data = {
             "ladder": self.ladder,
-            "predictor": self.predictor.to_dict(),
-            "deltas": {str(k): v for k, v in self.deltas.items()},
+            "predictors": {str(k): p.to_dict() for k, p in self.predictors.items()},
+            "targets": {str(t): v for t, v in self.targets.items()},
             "expected_tokens": self.expected_tokens,
             "meta": self.meta,
         }
@@ -67,8 +64,8 @@ class RouterArtifact:
             data = json.loads(Path(path).read_text())
         return cls(
             ladder=data["ladder"],
-            predictor=CapabilityPredictor.from_dict(data["predictor"]),
-            deltas={float(k): v for k, v in data["deltas"].items()},
+            predictors={int(k): CapabilityPredictor.from_dict(p) for k, p in data["predictors"].items()},
+            targets={float(t): v for t, v in data["targets"].items()},
             expected_tokens=data["expected_tokens"],
             meta=data.get("meta", {}),
         )
@@ -90,10 +87,6 @@ class Decision:
     optimizing: str
     warning: str | None
     overhead_ms: float
-
-
-def prompt_kind(prompt: str) -> str:
-    return "choice" if len(_CHOICE_PATTERN.findall(prompt)) >= 2 else "open"
 
 
 class Router:
@@ -134,11 +127,12 @@ class Router:
         state = state or resource_state(cpu_sample_s=0.0)
         loaded = loaded_models(self.client)
 
+        target = pick_target(self.artifact.targets, quality)
+        predictor = self.artifact.predictors[target["clusters"]]
         vectors = embed([prompt], self.client)
-        features = featurize(vectors, [prompt])
-        probs_all = self.artifact.predictor.predict(features)
-        probs = {m: float(probs_all[m][0]) for m in self.models}
-        novelty = self.artifact.predictor.novelty.level(vectors)[0]
+        row = predictor.predict(vectors, [prompt])[0]
+        probs = {m: float(row[predictor.models.index(m)]) for m in self.models}
+        novelty = predictor.novelty(vectors, [prompt])[0]
 
         latency, energy = {}, {}
         for m in self.models:
@@ -147,8 +141,10 @@ class Router:
         # On battery, rank models by energy when it is known; otherwise by time.
         by_energy = state.on_battery and all(e is not None for e in energy.values())
         costs = energy if by_energy else latency
-        delta = delta_for(self.artifact.deltas, quality)
-        model, reason = choose(probs, costs, self.largest, delta, novelty)
+        if quality >= 100:
+            model, reason = self.largest, "quality target 100%: always the largest model"
+        else:
+            model, reason = choose(probs, costs, self.largest, target["delta"], novelty)
 
         reference = max(probs[self.largest], 1e-9)
         warning = None

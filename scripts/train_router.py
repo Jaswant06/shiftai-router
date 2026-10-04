@@ -1,14 +1,17 @@
-"""Train the capability predictor on a profiling run and evaluate every policy.
+"""Train the router on a profiling run and evaluate it against baselines.
 
-    python scripts/train_router.py --run runs/qwen35-ladder
+    python scripts/train_router.py --run runs/qwen35
 
 Steps:
-  1. align the run into a (question x model) outcome matrix
-  2. split questions 60/20/20 into train / validation / test (fixed seed)
-  3. embed every question once with nomic-embed-text (cached in the run folder)
-  4. fit one calibrated head per model on train, tune delta per quality target on validation
-  5. score baselines, the oracle and the router on test, with measured router overhead
-  6. save the router artifact, metrics.json, a summary table and the Pareto chart
+  1. align the run into a (question x model) outcome matrix, re-grading every
+     stored reply with the current grader
+  2. hold out 20% of questions as a test set that nothing below looks at
+  3. on the other 80% (dev), use 5-fold out-of-fold predictions to pick, for
+     each quality target, the number of clusters and the delta
+  4. fit the final predictors on all dev questions and save the router artifact
+  5. score single models, the oracle, the per-type router and ShiftAI on test,
+     with the router's measured overhead added to its latency
+  6. write metrics.json, a summary table and the Pareto charts
 """
 
 from __future__ import annotations
@@ -19,9 +22,10 @@ import time
 from pathlib import Path
 
 import numpy as np
+from sklearn.model_selection import KFold
 
 from shiftai.evaluate import load_matrix, oracle_choice, score_policy, split_indices
-from shiftai.features import cached_embeddings, embed, featurize
+from shiftai.features import cached_embeddings, embed
 from shiftai.ollama import OllamaClient
 from shiftai.policy import TAU_GRID, simulate, tune_deltas
 from shiftai.predictor import train_predictor
@@ -29,6 +33,43 @@ from shiftai.router import RouterArtifact
 from shiftai.tasks import load_questions
 
 DEFAULT_ARTIFACT = Path("src/shiftai/artifacts/router.json")
+CLUSTER_OPTIONS = (1, 2, 4, 8, 16)
+
+
+def out_of_fold_probs(emb, texts, correct, models, rows, k, seed=0) -> np.ndarray:
+    """Predictions for each dev question from a predictor that never saw it."""
+    probs = np.zeros((len(rows), len(models)))
+    for fit, held in KFold(5, shuffle=True, random_state=seed).split(rows):
+        f, h = rows[fit], rows[held]
+        predictor = train_predictor(emb[f], [texts[i] for i in f], correct[f], models, k, seed=seed)
+        probs[held] = predictor.predict(emb[h], [texts[i] for i in h])
+    return probs
+
+
+def savings(probs, latency, order, largest, deltas) -> dict[float, float]:
+    """Latency saved at each quality target's tuned delta (higher is better)."""
+    rows = np.arange(len(latency))
+    out = {}
+    for tau in TAU_GRID:
+        chosen = simulate(probs, order, largest, deltas[tau])
+        out[tau] = float(1 - latency[rows, chosen].mean() / latency[:, largest].mean())
+    return out
+
+
+def random_mix(dev_acc, dev_cost, tau, largest, n, seed=0) -> np.ndarray:
+    """Baseline: send each prompt at random to one of two models, in the
+    proportion that just meets the target on dev (the best mix of fixed models)."""
+    target = tau * dev_acc[largest]
+    hull = upper_hull([(c, a) for c, a in zip(dev_cost, dev_acc)])
+    index = {(c, a): j for j, (c, a) in enumerate(zip(dev_cost, dev_acc))}
+    if target <= hull[0][1]:
+        return np.full(n, index[hull[0]])
+    for lo, hi in zip(hull, hull[1:]):
+        if lo[1] < target <= hi[1]:
+            share_hi = (target - lo[1]) / (hi[1] - lo[1])
+            pick_hi = np.random.default_rng(seed).uniform(size=n) < share_hi
+            return np.where(pick_hi, index[hi], index[lo])
+    return np.full(n, largest)
 
 
 def measure_overhead(texts: list[str], predictor, client: OllamaClient, n: int = 30) -> float:
@@ -37,10 +78,25 @@ def measure_overhead(texts: list[str], predictor, client: OllamaClient, n: int =
     timings = []
     for text in texts[:n]:
         t0 = time.perf_counter()
-        vec = embed([text], client)
-        predictor.predict(featurize(vec, [text]))
+        predictor.predict(embed([text], client), [text])
         timings.append(time.perf_counter() - t0)
     return float(np.mean(timings))
+
+
+def upper_hull(points: list[tuple[float, float]]) -> list[tuple[float, float]]:
+    """Best accuracy reachable at each cost by randomly mixing the given models."""
+    hull = []
+    for x, y in sorted(points):
+        if hull and y <= hull[-1][1]:
+            continue  # costs more and is no more accurate: never worth mixing in
+        while len(hull) >= 2:
+            (x1, y1), (x2, y2) = hull[-2], hull[-1]
+            if (y2 - y1) * (x - x1) <= (y - y1) * (x2 - x1):
+                hull.pop()  # the middle point sits below the line: drop it
+            else:
+                break
+        hull.append((x, y))
+    return hull
 
 
 def plot_pareto(results: list[dict], out: Path, metric: str, label: str) -> None:
@@ -49,24 +105,51 @@ def plot_pareto(results: list[dict], out: Path, metric: str, label: str) -> None
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
-    fig, ax = plt.subplots(figsize=(7, 4.5))
-    singles = [r for r in results if r["policy"].startswith("only:")]
-    routers = [r for r in results if r["policy"].startswith("router@")]
-    oracle = [r for r in results if r["policy"] == "oracle"]
-    ax.plot([r[metric] for r in singles], [r["accuracy"] for r in singles], "o", color="#888", label="single model")
+    def series(prefix):
+        rows = [r for r in results if r["policy"].startswith(prefix)]
+        return sorted(rows, key=lambda r: r[metric])
+
+    fig, ax = plt.subplots(figsize=(7.5, 4.8))
+    singles = series("only:")
+    ax.plot([r[metric] for r in singles], [r["accuracy"] for r in singles], "o", color="#8b949e", label="single models")
+    hull = upper_hull([(r[metric], r["accuracy"]) for r in singles])
+    ax.plot(*zip(*hull), "--", color="#8b949e", label="best random mix of single models")
     for r in singles:
-        ax.annotate(r["policy"][5:], (r[metric], r["accuracy"]), fontsize=8, xytext=(4, -10), textcoords="offset points")
-    ax.plot([r[metric] for r in routers], [r["accuracy"] for r in routers], "-s", color="#1f6feb", label="ShiftAI router")
-    for r in routers:
-        ax.annotate(r["policy"][7:], (r[metric], r["accuracy"]), fontsize=8, xytext=(4, 4), textcoords="offset points")
-    ax.plot([r[metric] for r in oracle], [r["accuracy"] for r in oracle], "*", ms=14, color="#d29922", label="oracle")
+        ax.annotate(r["policy"][5:], (r[metric], r["accuracy"]), fontsize=8, xytext=(5, -11), textcoords="offset points")
+    by_type = series("per-type@")
+    ax.plot([r[metric] for r in by_type], [r["accuracy"] for r in by_type], "-^", color="#a371f7", label="per-type router")
+    shift = series("shiftai@")
+    ax.plot([r[metric] for r in shift], [r["accuracy"] for r in shift], "-s", color="#1f6feb", label="ShiftAI")
+    for r in shift:
+        ax.annotate(r["policy"].split("@")[1] + "%", (r[metric], r["accuracy"]), fontsize=8, xytext=(5, 4), textcoords="offset points")
+    oracle = series("oracle")
+    ax.plot([r[metric] for r in oracle], [r["accuracy"] for r in oracle], "*", ms=15, color="#d29922", label="oracle")
     ax.set_xlabel(label)
-    ax.set_ylabel("accuracy (test set)")
+    ax.set_ylabel("accuracy on held-out test questions")
     ax.grid(alpha=0.3)
-    ax.legend()
+    ax.legend(fontsize=8, loc="lower right")
     fig.tight_layout()
     fig.savefig(out, dpi=150)
     plt.close(fig)
+
+
+def write_summary(results: list[dict], path: Path) -> str:
+    has_energy = "mean_energy_j" in results[0]
+    header = "| policy | accuracy | relative quality | mean latency (s) | p95 latency (s) | latency saved |"
+    if has_energy:
+        header += " energy (J) | energy saved |"
+    lines = [header, "|" + "---|" * (header.count("|") - 1)]
+    for r in results:
+        row = (
+            f"| {r['policy']} | {r['accuracy']:.3f} | {r['relative_quality']:.1%} | "
+            f"{r['mean_latency_s']:.2f} | {r['p95_latency_s']:.2f} | {r['latency_saving']:.1%} |"
+        )
+        if has_energy:
+            row += f" {r['mean_energy_j']:.1f} | {r['energy_saving']:.1%} |"
+        lines.append(row)
+    text = "\n".join(lines) + "\n"
+    path.write_text(text)
+    return text
 
 
 def main() -> None:
@@ -88,86 +171,92 @@ def main() -> None:
     texts = [questions[q].feature_text() for q in matrix.qids]
     kinds = [questions[q].kind for q in matrix.qids]
     emb = cached_embeddings(texts, client, args.run)
-    x = featurize(emb, texts)
+    correct = matrix.correct.astype(float)
 
     train, val, test = split_indices(len(texts), seed=args.seed)
-    y = {m: matrix.correct[:, j].astype(int) for j, m in enumerate(models)}
-    predictor = train_predictor(
-        x[train], {m: v[train] for m, v in y.items()},
-        x[val], {m: v[val] for m, v in y.items()},
-        emb[train], emb[val], seed=args.seed,
-    )
+    dev = np.concatenate([train, val])
+    order = list(np.argsort(matrix.latency[dev].mean(axis=0)))  # cheapest first
 
-    def prob_matrix(rows: np.ndarray) -> np.ndarray:
-        p = predictor.predict(x[rows])
-        return np.column_stack([p[m] for m in models])
+    # For every quality target, pick the cluster count and delta using only dev questions.
+    tuned = {}
+    for k in CLUSTER_OPTIONS:
+        oof = out_of_fold_probs(emb, texts, correct, models, dev, k, args.seed)
+        deltas = tune_deltas(oof, matrix.correct[dev], order, largest)
+        tuned[k] = (deltas, savings(oof, matrix.latency[dev], order, largest, deltas))
+        print(f"  {k:2d} clusters per type, dev latency saved: "
+              + "  ".join(f"{int(t * 100)}%:{v:.1%}" for t, v in tuned[k][1].items()))
+    targets = {}
+    for tau in TAU_GRID:
+        # Ties go to fewer clusters: the simpler model.
+        k = max(CLUSTER_OPTIONS, key=lambda c: (round(tuned[c][1][tau], 4), -c))
+        targets[tau] = {"clusters": k, "delta": tuned[k][0][tau]}
+    print("Chosen per target:", {int(t * 100): v["clusters"] for t, v in targets.items()})
 
-    # Cost order for routing: cheapest first by mean warm latency on train.
-    order = list(np.argsort(matrix.latency[train].mean(axis=0)))
-    deltas = tune_deltas(prob_matrix(val), matrix.correct[val], order, largest)
+    predictors = {
+        k: train_predictor(emb[dev], [texts[i] for i in dev], correct[dev], models, k, seed=args.seed)
+        for k in sorted({v["clusters"] for v in targets.values()} | {1})
+    }
 
     expected_tokens = {}
     for j, m in enumerate(models):
         per_kind = {}
         for kind, key in (("choice", "choice"), ("math", "open")):
-            rows = [i for i in train if kinds[i] == kind]
+            rows = [i for i in dev if kinds[i] == kind]
             if rows:
                 per_kind[key] = float(np.median(matrix.output_tokens[rows, j]))
         expected_tokens[m] = per_kind
 
     artifact = RouterArtifact(
         ladder=models,
-        predictor=predictor,
-        deltas=deltas,
+        predictors=predictors,
+        targets=targets,
         expected_tokens=expected_tokens,
         meta={
             "run": str(args.run),
             "n_questions": len(texts),
-            "split": {"train": len(train), "val": len(val), "test": len(test), "seed": args.seed},
+            "split": {"dev": len(dev), "test": len(test), "seed": args.seed},
             "trained": time.strftime("%Y-%m-%dT%H:%M:%S"),
         },
     )
     artifact.save(args.artifact)
     print(f"Saved router artifact to {args.artifact}")
 
-    overhead_s = measure_overhead([texts[i] for i in test], predictor, client)
+    overhead_s = measure_overhead([texts[i] for i in test], predictors[max(predictors)], client)
     print(f"Router overhead: {overhead_s * 1000:.1f} ms per prompt")
 
     results = []
     for j, m in enumerate(models):
         results.append(score_policy(f"only:{m}", np.full(len(test), j), matrix, test))
-    cost = matrix.latency[test]
-    results.append(score_policy("oracle", oracle_choice(matrix.correct[test], cost), matrix, test))
-    test_probs = prob_matrix(test)
+    results.append(score_policy("oracle", oracle_choice(matrix.correct[test], matrix.latency[test]), matrix, test))
+
+    # Baseline: the same router with one cluster per prompt type, i.e. routing by type alone.
+    test_texts = [texts[i] for i in test]
+    probs = {k: p.predict(emb[test], test_texts) for k, p in predictors.items()}
+    dev_acc, dev_cost = matrix.correct[dev].mean(axis=0), matrix.latency[dev].mean(axis=0)
     for tau in TAU_GRID:
-        chosen = simulate(test_probs, order, largest, deltas[tau])
-        r = score_policy(f"router@{int(round(tau * 100))}", chosen, matrix, test, overhead_s=overhead_s)
-        r["target"] = tau
-        r["delta"] = deltas[tau]
-        r["meets_target"] = r["relative_quality"] >= tau - 1e-9
+        tag = int(round(tau * 100))
+        mix = random_mix(dev_acc, dev_cost, tau, largest, len(test), seed=args.seed)
+        results.append(score_policy(f"random-mix@{tag}", mix, matrix, test))
+        r = score_policy(f"per-type@{tag}", simulate(probs[1], order, largest, tuned[1][0][tau]), matrix, test, overhead_s)
+        results.append(r)
+        k, delta = targets[tau]["clusters"], targets[tau]["delta"]
+        r = score_policy(f"shiftai@{tag}", simulate(probs[k], order, largest, delta), matrix, test, overhead_s)
+        r.update(target=tau, clusters=k, delta=delta, meets_target=r["relative_quality"] >= tau - 1e-9)
         results.append(r)
 
     args.results.mkdir(parents=True, exist_ok=True)
-    summary = {"models": models, "overhead_ms": overhead_s * 1000, "deltas": deltas, "results": results}
+    summary = {
+        "models": models,
+        "dev_latency_saving": {str(k): {str(t): v for t, v in s[1].items()} for k, s in tuned.items()},
+        "targets": {str(t): v for t, v in targets.items()},
+        "overhead_ms": overhead_s * 1000,
+        "results": results,
+    }
     (args.results / "metrics.json").write_text(json.dumps(summary, indent=2))
-
-    has_energy = "mean_energy_j" in results[0]
-    header = "| policy | accuracy | relative quality | mean latency (s) | p95 latency (s) | latency saved |"
-    header += " energy (J) | energy saved |" if has_energy else ""
-    lines = [header, "|" + "---|" * (header.count("|") - 1)]
-    for r in results:
-        row = (
-            f"| {r['policy']} | {r['accuracy']:.3f} | {r['relative_quality']:.1%} | "
-            f"{r['mean_latency_s']:.2f} | {r['p95_latency_s']:.2f} | {r['latency_saving']:.1%} |"
-        )
-        if has_energy:
-            row += f" {r['mean_energy_j']:.1f} | {r['energy_saving']:.1%} |"
-        lines.append(row)
-    (args.results / "summary.md").write_text("\n".join(lines) + "\n")
-    print("\n".join(lines))
+    print(write_summary(results, args.results / "summary.md"))
 
     plot_pareto(results, args.results / "pareto_latency.png", "mean_latency_s", "mean latency per prompt (s)")
-    if has_energy:
+    if "mean_energy_j" in results[0]:
         plot_pareto(results, args.results / "pareto_energy.png", "mean_energy_j", "mean energy per prompt (J)")
     print(f"Wrote metrics, summary and charts to {args.results}/")
 

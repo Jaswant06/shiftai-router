@@ -1,14 +1,22 @@
 """Capability predictor: how likely is each model to answer this prompt well?
 
-One logistic regression per model reads the prompt features and outputs a
-probability; an isotonic map fitted on held-out data then calibrates it, so a
-predicted 0.8 really means "right about 80% of the time".
+Prompts are first split by type (multiple choice versus open-ended), then
+grouped into clusters of similar prompts by their embeddings. For every
+cluster we store each model's measured accuracy, shrunk toward the accuracy on
+that prompt type so small clusters do not produce extreme estimates. A new
+prompt gets the estimates of its nearest cluster.
 
-A novelty score flags prompts unlike anything seen in training. The router
-uses it to spend more compute when it cannot trust its own prediction.
+Why clusters and not a per-prompt classifier: a logistic regression over the
+full embedding ranks answers only moderately well (0.64 to 0.72 AUC). Routed
+with the same tuning, it matched the cluster estimates at looser targets but
+missed the 99% target, where it also saved far less (see scripts/ablations.py).
+Group-level estimates are less noisy, met every target, and are easy to
+inspect.
 
-Training needs scikit-learn (the `bench` extra). Prediction is plain NumPy,
-so the installed package stays light.
+Distance to the nearest cluster doubles as a novelty score: prompts unlike
+anything seen in training are routed more conservatively.
+
+Training needs scikit-learn (the `bench` extra). Prediction is plain NumPy.
 """
 
 from __future__ import annotations
@@ -17,134 +25,112 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
-def _sigmoid(z: np.ndarray) -> np.ndarray:
-    return 1.0 / (1.0 + np.exp(-z))
+from .features import KINDS, prompt_kind
 
 
-def _round(a: np.ndarray, digits: int = 6) -> list:
+def _round(a, digits: int = 6) -> list:
     return np.round(np.asarray(a, dtype=np.float64), digits).tolist()
 
 
 @dataclass
-class ModelHead:
-    """Logistic-regression weights plus the isotonic calibration curve."""
+class KindClusters:
+    """Clusters for one prompt type and each model's accuracy per cluster."""
 
-    coef: np.ndarray
-    intercept: float
-    iso_x: np.ndarray
-    iso_y: np.ndarray
+    centroids: np.ndarray  # (k, dim), unit length
+    accuracy: np.ndarray   # (k, n_models)
+    medium: float          # similarity below this: somewhat unfamiliar
+    low: float             # similarity below this: very unfamiliar
 
-    def predict(self, z: np.ndarray) -> np.ndarray:
-        raw = _sigmoid(z @ self.coef + self.intercept)
-        return np.interp(raw, self.iso_x, self.iso_y)
-
-
-@dataclass
-class Novelty:
-    """Similarity to the training distribution, with two alert levels."""
-
-    centroids: np.ndarray
-    medium: float
-    low: float
-
-    def similarity(self, embeddings: np.ndarray) -> np.ndarray:
-        return (embeddings @ self.centroids.T).max(axis=1)
-
-    def level(self, embeddings: np.ndarray) -> list[str]:
-        sims = self.similarity(embeddings)
-        return ["low" if s < self.low else "medium" if s < self.medium else "high" for s in sims]
+    def nearest(self, embeddings: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        sims = embeddings @ self.centroids.T
+        return sims.argmax(axis=1), sims.max(axis=1)
 
 
 class CapabilityPredictor:
     """Predicts P(model gives an acceptable answer | prompt) for every model."""
 
-    def __init__(self, mean: np.ndarray, std: np.ndarray, heads: dict[str, ModelHead], novelty: Novelty):
-        self.mean = mean
-        self.std = std
-        self.heads = heads
-        self.novelty = novelty
+    def __init__(self, models: list[str], kinds: dict[str, KindClusters]):
+        self.models = models
+        self.kinds = kinds
 
-    @property
-    def models(self) -> list[str]:
-        return list(self.heads)
+    def predict(self, embeddings: np.ndarray, texts: list[str]) -> np.ndarray:
+        """(n_prompts, n_models) probabilities, columns in `self.models` order."""
+        probs = np.zeros((len(texts), len(self.models)))
+        for kind, clusters in self.kinds.items():
+            rows = [i for i, t in enumerate(texts) if prompt_kind(t) == kind]
+            if rows:
+                nearest, _ = clusters.nearest(embeddings[rows])
+                probs[rows] = clusters.accuracy[nearest]
+        return probs
 
-    def predict(self, features: np.ndarray) -> dict[str, np.ndarray]:
-        z = (features - self.mean) / self.std
-        return {name: head.predict(z) for name, head in self.heads.items()}
+    def novelty(self, embeddings: np.ndarray, texts: list[str]) -> list[str]:
+        levels = []
+        for vec, text in zip(embeddings, texts):
+            clusters = self.kinds.get(prompt_kind(text))
+            if clusters is None:
+                levels.append("low")
+                continue
+            _, sim = clusters.nearest(vec[None, :])
+            levels.append("low" if sim[0] < clusters.low else "medium" if sim[0] < clusters.medium else "high")
+        return levels
 
     def to_dict(self) -> dict:
         return {
-            "mean": _round(self.mean),
-            "std": _round(self.std),
-            "heads": {
-                name: {
-                    "coef": _round(h.coef),
-                    "intercept": float(h.intercept),
-                    "iso_x": _round(h.iso_x),
-                    "iso_y": _round(h.iso_y),
+            "models": self.models,
+            "kinds": {
+                kind: {
+                    "centroids": _round(c.centroids, 5),
+                    "accuracy": _round(c.accuracy, 4),
+                    "medium": c.medium,
+                    "low": c.low,
                 }
-                for name, h in self.heads.items()
-            },
-            "novelty": {
-                "centroids": _round(self.novelty.centroids, 5),
-                "medium": self.novelty.medium,
-                "low": self.novelty.low,
+                for kind, c in self.kinds.items()
             },
         }
 
     @classmethod
     def from_dict(cls, data: dict) -> "CapabilityPredictor":
-        heads = {
-            name: ModelHead(
-                coef=np.asarray(h["coef"]),
-                intercept=h["intercept"],
-                iso_x=np.asarray(h["iso_x"]),
-                iso_y=np.asarray(h["iso_y"]),
-            )
-            for name, h in data["heads"].items()
+        kinds = {
+            kind: KindClusters(np.asarray(c["centroids"]), np.asarray(c["accuracy"]), c["medium"], c["low"])
+            for kind, c in data["kinds"].items()
         }
-        nov = data["novelty"]
-        novelty = Novelty(np.asarray(nov["centroids"]), nov["medium"], nov["low"])
-        return cls(np.asarray(data["mean"]), np.asarray(data["std"]), heads, novelty)
+        return cls(data["models"], kinds)
 
 
 def train_predictor(
-    x_train: np.ndarray,
-    y_train: dict[str, np.ndarray],
-    x_val: np.ndarray,
-    y_val: dict[str, np.ndarray],
-    emb_train: np.ndarray,
-    emb_val: np.ndarray,
-    c: float = 0.5,
-    n_clusters: int = 32,
+    embeddings: np.ndarray,
+    texts: list[str],
+    correct: np.ndarray,
+    models: list[str],
+    clusters_per_kind: int = 8,
+    prior: float = 10.0,
     seed: int = 0,
 ) -> CapabilityPredictor:
-    """Fit one calibrated head per model and the novelty detector."""
+    """Cluster each prompt type and estimate every model's accuracy per cluster.
+
+    `correct` is (n_prompts, n_models). `prior` is how many pseudo-examples of
+    the prompt-type average each cluster is shrunk toward.
+    """
     from sklearn.cluster import KMeans
-    from sklearn.isotonic import IsotonicRegression
-    from sklearn.linear_model import LogisticRegression
 
-    mean = x_train.mean(axis=0)
-    std = x_train.std(axis=0) + 1e-6
-    z_train = (x_train - mean) / std
-    z_val = (x_val - mean) / std
-
-    heads = {}
-    for name, labels in y_train.items():
-        if labels.min() == labels.max():
-            # A model that is always right (or always wrong) on the training set.
-            p = float(labels[0])
-            heads[name] = ModelHead(np.zeros(z_train.shape[1]), 0.0, np.array([0.0, 1.0]), np.array([p, p]))
+    kinds = np.array([prompt_kind(t) for t in texts])
+    fitted = {}
+    for kind in KINDS:
+        rows = np.where(kinds == kind)[0]
+        if len(rows) == 0:
             continue
-        lr = LogisticRegression(C=c, max_iter=5000, random_state=seed).fit(z_train, labels)
-        raw_val = lr.predict_proba(z_val)[:, 1]
-        iso = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip").fit(raw_val, y_val[name])
-        heads[name] = ModelHead(lr.coef_[0], float(lr.intercept_[0]), iso.X_thresholds_, iso.y_thresholds_)
-
-    k = min(n_clusters, len(emb_train))
-    km = KMeans(n_clusters=k, n_init=4, random_state=seed).fit(emb_train)
-    centroids = km.cluster_centers_ / np.linalg.norm(km.cluster_centers_, axis=1, keepdims=True)
-    val_sims = (emb_val @ centroids.T).max(axis=1)
-    novelty = Novelty(centroids, medium=float(np.percentile(val_sims, 10)), low=float(np.percentile(val_sims, 2)))
-    return CapabilityPredictor(mean, std, heads, novelty)
+        k = max(1, min(clusters_per_kind, len(rows) // 20))
+        km = KMeans(n_clusters=k, n_init=4, random_state=seed).fit(embeddings[rows])
+        centroids = km.cluster_centers_ / np.linalg.norm(km.cluster_centers_, axis=1, keepdims=True)
+        base = correct[rows].mean(axis=0)
+        accuracy = np.zeros((k, len(models)))
+        for c in range(k):
+            members = rows[km.labels_ == c]
+            accuracy[c] = (correct[members].sum(axis=0) + prior * base) / (len(members) + prior)
+        sims = (embeddings[rows] @ centroids.T).max(axis=1)
+        fitted[kind] = KindClusters(
+            centroids, accuracy,
+            medium=float(np.percentile(sims, 5)),
+            low=float(np.percentile(sims, 1)),
+        )
+    return CapabilityPredictor(models, fitted)
