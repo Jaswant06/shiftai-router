@@ -173,7 +173,7 @@ def main() -> None:
     texts = [questions[q].feature_text() for q in matrix.qids]
     kinds = [questions[q].kind for q in matrix.qids]
     family = np.array([FAMILY[k] for k in kinds])
-    print("  by family:", {f: int((family == f).sum()) for f in dict.fromkeys(family)})
+    print("  by family:", {str(f): int((family == f).sum()) for f in dict.fromkeys(family)})
     emb = cached_embeddings(texts, client, args.run[0])
     correct = matrix.correct.astype(float)
 
