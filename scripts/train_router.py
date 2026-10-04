@@ -24,7 +24,7 @@ from pathlib import Path
 import numpy as np
 from sklearn.model_selection import KFold
 
-from shiftai.evaluate import load_matrix, oracle_choice, score_policy, split_indices
+from shiftai.evaluate import load_matrix, merge_matrices, oracle_choice, score_policy, split_indices
 from shiftai.features import cached_embeddings, embed
 from shiftai.ollama import OllamaClient
 from shiftai.policy import TAU_GRID, simulate, tune_deltas
@@ -33,6 +33,7 @@ from shiftai.router import RouterArtifact
 from shiftai.tasks import load_questions
 
 DEFAULT_ARTIFACT = Path("src/shiftai/artifacts/router.json")
+FAMILY = {"math": "benchmark", "choice": "benchmark", "code": "coding", "open": "open-ended"}
 CLUSTER_OPTIONS = (1, 2, 4, 8, 16)
 
 
@@ -154,23 +155,26 @@ def write_summary(results: list[dict], path: Path) -> str:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train and evaluate the ShiftAI router.")
-    parser.add_argument("--run", type=Path, required=True, help="profiling run folder")
-    parser.add_argument("--questions", type=Path, default=Path("data/questions.jsonl"))
+    parser.add_argument("--run", type=Path, nargs="+", required=True, help="profiling run folder(s)")
+    parser.add_argument("--questions", type=Path, nargs="+", default=[Path("data/questions.jsonl")])
     parser.add_argument("--artifact", type=Path, default=DEFAULT_ARTIFACT)
     parser.add_argument("--results", type=Path, default=Path("results"))
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
 
     client = OllamaClient()
-    questions = {q.id: q for q in load_questions(args.questions)}
-    matrix = load_matrix(args.run, questions=questions)  # re-graded with the current grader
+    questions = {q.id: q for path in args.questions for q in load_questions(path)}
+    # Re-graded with the current grader; open-ended questions use the judge's labels.
+    matrix = merge_matrices([load_matrix(run, questions=questions) for run in args.run])
     models, largest = matrix.models, len(matrix.models) - 1
     print(f"{len(matrix.qids)} questions answered by all of: {', '.join(models)}")
 
     # The router sees what a user would type, not the benchmark's format instruction.
     texts = [questions[q].feature_text() for q in matrix.qids]
     kinds = [questions[q].kind for q in matrix.qids]
-    emb = cached_embeddings(texts, client, args.run)
+    family = np.array([FAMILY[k] for k in kinds])
+    print("  by family:", {f: int((family == f).sum()) for f in dict.fromkeys(family)})
+    emb = cached_embeddings(texts, client, args.run[0])
     correct = matrix.correct.astype(float)
 
     train, val, test = split_indices(len(texts), seed=args.seed)
@@ -200,8 +204,9 @@ def main() -> None:
     expected_tokens = {}
     for j, m in enumerate(models):
         per_kind = {}
-        for kind, key in (("choice", "choice"), ("math", "open")):
-            rows = [i for i in dev if kinds[i] == kind]
+        for key in ("choice", "open"):
+            # The live router only tells multiple choice from everything else.
+            rows = [i for i in dev if (kinds[i] == "choice") == (key == "choice")]
             if rows:
                 per_kind[key] = float(np.median(matrix.output_tokens[rows, j]))
         expected_tokens[m] = per_kind
@@ -212,7 +217,7 @@ def main() -> None:
         targets=targets,
         expected_tokens=expected_tokens,
         meta={
-            "run": str(args.run),
+            "runs": [str(r) for r in args.run],
             "n_questions": len(texts),
             "split": {"dev": len(dev), "test": len(test), "seed": args.seed},
             "trained": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -233,6 +238,7 @@ def main() -> None:
     test_texts = [texts[i] for i in test]
     probs = {k: p.predict(emb[test], test_texts) for k, p in predictors.items()}
     dev_acc, dev_cost = matrix.correct[dev].mean(axis=0), matrix.latency[dev].mean(axis=0)
+    by_family = []
     for tau in TAU_GRID:
         tag = int(round(tau * 100))
         mix = random_mix(dev_acc, dev_cost, tau, largest, len(test), seed=args.seed)
@@ -243,6 +249,12 @@ def main() -> None:
         r = score_policy(f"shiftai@{tag}", simulate(probs[k], order, largest, delta), matrix, test, overhead_s)
         r.update(target=tau, clusters=k, delta=delta, meets_target=r["relative_quality"] >= tau - 1e-9)
         results.append(r)
+        chosen = simulate(probs[k], order, largest, delta)
+        for fam in dict.fromkeys(family[test]):
+            mask = family[test] == fam
+            fr = score_policy(f"shiftai@{tag}", chosen[mask], matrix, test[mask], overhead_s)
+            fr.update(family=fam, n=int(mask.sum()))
+            by_family.append(fr)
 
     args.results.mkdir(parents=True, exist_ok=True)
     summary = {
@@ -251,9 +263,18 @@ def main() -> None:
         "targets": {str(t): v for t, v in targets.items()},
         "overhead_ms": overhead_s * 1000,
         "results": results,
+        "by_family": by_family,
     }
     (args.results / "metrics.json").write_text(json.dumps(summary, indent=2))
     print(write_summary(results, args.results / "summary.md"))
+    if len(set(family)) > 1:
+        lines = ["| target | prompts | n | quality kept | latency saved | energy saved |", "|---|---|---|---|---|---|"]
+        for r in by_family:
+            energy = f"{r['energy_saving']:.1%}" if "energy_saving" in r else "n/a"
+            lines.append(f"| {r['policy'].split('@')[1]}% | {r['family']} | {r['n']} | "
+                         f"{r['relative_quality']:.1%} | {r['latency_saving']:.1%} | {energy} |")
+        (args.results / "summary_by_family.md").write_text("\n".join(lines) + "\n")
+        print("\n".join(lines))
 
     plot_pareto(results, args.results / "pareto_latency.png", "mean_latency_s", "mean latency per prompt (s)")
     if "mean_energy_j" in results[0]:

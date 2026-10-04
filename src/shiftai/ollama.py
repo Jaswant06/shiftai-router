@@ -87,17 +87,19 @@ class OllamaClient:
         temperature: float = 0.0,
         seed: int = 0,
         keep_alive: str | None = None,
+        think: bool = False,
     ) -> ChatResult:
-        """Run one non-streaming chat turn with thinking turned off.
+        """Run one non-streaming chat turn, with thinking off by default.
 
-        Thinking is disabled so every model in the ladder is compared on the
-        same footing; a thinking model would otherwise spend hidden tokens.
+        Thinking is disabled for profiling so every model in the ladder is
+        compared on the same footing; a thinking model would otherwise spend
+        hidden tokens.
         """
         body = {
             "model": model,
             "messages": messages,
             "stream": False,
-            "think": False,
+            "think": think,
             "options": {"temperature": temperature, "seed": seed, "num_predict": max_tokens},
         }
         if keep_alive is not None:

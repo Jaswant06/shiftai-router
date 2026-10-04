@@ -29,7 +29,7 @@ class Record:
     qid: str
     task: str
     model: str
-    correct: bool
+    correct: bool | None  # None for open-ended questions, which are judged later
     reply: str
     wall_s: float
     total_s: float
@@ -101,7 +101,7 @@ def run_profile(
                     qid=q.id,
                     task=q.task,
                     model=model,
-                    correct=grade(q, result.text),
+                    correct=None if q.judged else grade(q, result.text),
                     reply=result.text,
                     wall_s=t1 - t0,
                     total_s=result.total_s,

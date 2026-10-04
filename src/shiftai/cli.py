@@ -91,7 +91,7 @@ def cmd_bench(args) -> None:
     sampler = _sampler(not args.no_energy)
 
     def show(record, i, n):
-        mark = "✓" if record.correct else "✗"
+        mark = "·" if record.correct is None else "✓" if record.correct else "✗"
         print(f"[{i}/{n}] {record.model:20} {record.task:14} {mark} {record.total_s:5.1f}s", flush=True)
 
     path = run_profile(args.models, questions, args.out, sampler=sampler, seed=args.seed, on_record=show)

@@ -16,6 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from .grading import grade
+from .judge import acceptable, load_judgments, pair_scores
 from .profiler import load_records
 from .tasks import Question
 
@@ -41,28 +42,56 @@ def build_matrix(
     records: list[dict],
     models: list[str],
     questions: dict[str, Question] | None = None,
+    judged: dict[tuple[str, str], float] | None = None,
 ) -> ProfileMatrix:
     """Keep only questions that every model answered, in a stable order.
 
     When the questions are given, every stored reply is re-graded with the
     current grader, so a grading fix never requires re-running the models.
+    Open-ended questions take their labels from the judge scores instead: the
+    largest model is the reference (always acceptable) and every other model
+    is acceptable when judged at least as good. Open-ended questions that are
+    not fully judged yet are left out.
     """
     by_key = {(r["model"], r["qid"]): r for r in records}
     task_of = {r["qid"]: r["task"] for r in records}
-    qids = sorted(q for q in task_of if all((m, q) in by_key for m in models))
-    shape = (len(qids), len(models))
+    reference = models[-1]
+    judged = judged or {}
+
+    def label(model: str, qid: str) -> bool | None:
+        q = questions.get(qid) if questions else None
+        if q is not None and q.judged:
+            if model == reference:
+                return True
+            score = judged.get((model, qid))
+            return None if score is None else acceptable(score)
+        if q is not None:
+            return grade(q, by_key[(model, qid)]["reply"])
+        return by_key[(model, qid)]["correct"]
+
+    rows = []
+    for q in sorted(task_of):
+        if not all((m, q) in by_key for m in models):
+            continue
+        labels = [label(m, q) for m in models]
+        if any(v is None for v in labels):
+            continue
+        rows.append((q, labels))
+
+    shape = (len(rows), len(models))
     correct = np.zeros(shape, dtype=bool)
     latency = np.zeros(shape)
     energy = np.full(shape, np.nan)
     tokens = np.zeros(shape)
-    for i, q in enumerate(qids):
+    for i, (q, labels) in enumerate(rows):
         for j, m in enumerate(models):
             r = by_key[(m, q)]
-            correct[i, j] = grade(questions[q], r["reply"]) if questions else r["correct"]
+            correct[i, j] = labels[j]
             latency[i, j] = max(r["total_s"] - r["load_s"], 0.0)
             if r.get("energy_j") is not None:
                 energy[i, j] = r["energy_j"]
             tokens[i, j] = r["output_tokens"]
+    qids = [q for q, _ in rows]
     return ProfileMatrix(qids, [task_of[q] for q in qids], models, correct, latency, energy, tokens)
 
 
@@ -74,7 +103,24 @@ def load_matrix(
     run_dir = Path(run_dir)
     if models is None:
         models = json.loads((run_dir / "meta.json").read_text())["models"]
-    return build_matrix(load_records(run_dir / "records.jsonl"), models, questions)
+    judged = pair_scores(load_judgments(run_dir))
+    return build_matrix(load_records(run_dir / "records.jsonl"), models, questions, judged)
+
+
+def merge_matrices(matrices: list[ProfileMatrix]) -> ProfileMatrix:
+    """Stack runs that profiled the same models on different questions."""
+    models = matrices[0].models
+    if any(m.models != models for m in matrices):
+        raise ValueError("All runs must profile the same models in the same order")
+    return ProfileMatrix(
+        qids=[q for m in matrices for q in m.qids],
+        tasks=[t for m in matrices for t in m.tasks],
+        models=models,
+        correct=np.vstack([m.correct for m in matrices]),
+        latency=np.vstack([m.latency for m in matrices]),
+        energy=np.vstack([m.energy for m in matrices]),
+        output_tokens=np.vstack([m.output_tokens for m in matrices]),
+    )
 
 
 def split_indices(n: int, seed: int = 0, fractions=(0.6, 0.2, 0.2)) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
