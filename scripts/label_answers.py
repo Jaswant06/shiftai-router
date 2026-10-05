@@ -6,8 +6,8 @@
 Shows a request, the human-written reference answer and one model's answer,
 without saying which model wrote it. Type y (a typical user would be
 satisfied), n (not), s (skip) or q (save and quit). The answers are the same
-100 that the AI reference annotator labelled, so the report compares you with
-the judge and with that annotator. Labels are saved after every answer.
+100 that have frontier-model (silver-standard) labels, so the report compares
+you with the judge and with those labels. Labels are saved after every answer.
 """
 
 from __future__ import annotations
@@ -54,7 +54,7 @@ def report(human: list[dict], run: Path) -> None:
     judge = pointwise_labels(run)
     ai = {(r["model"], r["qid"]): r["acceptable"] for r in _load(ITEMS)}
     print(f"\n{len(human)} answers labelled by a person")
-    for name, other in (("the judge", judge), ("the AI reference annotator", ai)):
+    for name, other in (("the judge", judge), ("the frontier-model labels", ai)):
         pairs = [(h["acceptable"], other[(h["model"], h["qid"])]) for h in human if (h["model"], h["qid"]) in other]
         if pairs:
             a, b = [p[0] for p in pairs], [p[1] for p in pairs]

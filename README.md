@@ -102,23 +102,26 @@ Open-ended requests have no single right answer, so a local judge model
 (`gemma4:e4b`, from a different family than the models it judges) reads each
 answer next to Dolly's human-written reference answer and decides whether a
 typical user would be satisfied (`src/shiftai/judge.py`). Getting this right
-took three attempts, each measured against 100 to 120 blind labels:
+took three attempts, each measured against 100 to 120 blind silver-standard
+labels from a frontier model, plus 39 labels from a person:
 
 1. **Side-by-side comparison with the 9B's answer, one-word verdict.** Llama
    3.1 8B and Qwen 3.5 9B picked whichever answer was shown first 88 to 91% of
-   the time, and Gemma's verdict flipped with the order in 40 of 72 pairs. Asking for a short explanation before the
-   verdict fixed the position bias, but agreement with blind labels was only
-   64% (kappa 0.25). Worse, defining quality as "at least as good as the 9B"
+   the time, and Gemma's verdict flipped with the order in 40 of 72 pairs.
+   Asking for a short explanation before the verdict fixed the position bias,
+   but the judge still agreed with the frontier-model labels only 64% of the
+   time (kappa 0.25), and with the person only 56% (kappa 0.12). Worse, defining quality as
+   "at least as good as the 9B"
    gives the 9B 100% by construction, so the router sent every open-ended prompt
    to it.
 2. **Each answer judged on its own, without a reference.** The small judge
    could not check facts: it accepted "a baker's dozen is 12".
 3. **Each answer judged on its own, with the human reference answer** (used).
-   Agreement with blind labels rose to 76% (kappa 0.47). The judge's
+   Agreement with the frontier-model labels rose to 76% (kappa 0.47). The judge's
    "unacceptable" was right every time (19 of 19), but its "acceptable" was too
    generous, especially for small models:
 
-| Model | Judge says acceptable | Blind labels say acceptable | P(truly acceptable, given judge says yes) |
+| Model | Judge says acceptable | Frontier-model labels say acceptable | P(truly acceptable, given judge says yes) |
 |---|---:|---:|---:|
 | qwen3.5:0.8b | 56% | 32% | 0.61 |
 | qwen3.5:2b | 76% | 44% | 0.60 |
@@ -127,10 +130,18 @@ took three attempts, each measured against 100 to 120 blind labels:
 
 So each "acceptable" verdict is converted into that probability (smoothed
 toward the overall rate, since there are 25 labels per model), and "unacceptable"
-stays 0. **The blind labels were produced by an AI model (Claude), not a person**,
-so they are a stronger reference annotator rather than human ground truth; they
-are published in [`results/judge_validation/`](results/judge_validation/), and
-`scripts/label_pairs.py` lets anyone add human labels.
+stays 0.
+
+**Who labelled what.** The 220 blind labels behind the table and the correction
+are silver-standard labels from a frontier model, far stronger than the judge,
+rather than gold-standard labels from a person. The 39 human labels are
+side-by-side verdicts; on the 15 pairs both labelled, the person and the
+frontier model made the same "good enough" decision 12 times. That is too few
+pairs for a firm conclusion, so the correction is validated against
+silver-standard labels. All labels are published in
+[`results/judge_validation/`](results/judge_validation/), and
+`scripts/label_answers.py` collects human labels on the same 100 answers the
+correction uses.
 
 ## Evaluation
 
@@ -342,8 +353,9 @@ shiftai-router/
 
 ## Limitations
 
-- **Open-ended quality comes from a small judge**, corrected with 100 blind
-  labels from an AI annotator, not people. The correction is a handful of
+- **Open-ended quality comes from a small judge**, corrected with 100
+  silver-standard labels from a frontier model; human labels so far (39) cover
+  only the rejected side-by-side judge. The correction is a handful of
   numbers fitted on 25 labels per model, so open-ended results carry more
   uncertainty than benchmark results.
 - **Cluster estimates are coarse.** A new prompt inherits the quality of its

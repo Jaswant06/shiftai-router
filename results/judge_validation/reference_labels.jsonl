@@ -1,120 +1,120 @@
-{"qid": "dolly-8798", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-12618", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10353", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-5688", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12449", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1569", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-9158", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10600", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-9332", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14888", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-5374", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14742", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14194", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-9214", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-9950", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-6566", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1042", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-5793", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-14059", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-10429", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12124", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-5450", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-8929", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-9699", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10614", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-4650", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-7482", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-5145", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-14430", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-10361", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-1408", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-5030", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12721", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-14155", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1795", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-7151", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10509", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-711", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-587", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-3177", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1768", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12169", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-11547", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1888", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-270", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10833", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-3830", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12617", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-6545", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-7290", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-3191", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-711", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-9711", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14882", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-13688", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-5694", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-2800", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14854", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-9060", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-452", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-139", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-5835", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-9117", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-9197", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-12459", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-6738", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1768", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-10880", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-6643", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-8239", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-124", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12843", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-6060", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-3406", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-4194", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-4711", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-34", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1254", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-6545", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-7290", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-9130", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-186", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-8992", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-2864", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-12459", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-9649", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-9711", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10983", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14292", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12201", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-11540", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-3886", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-1853", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-7593", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-895", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-8020", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-221", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-2155", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-11979", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-7806", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-14159", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-3042", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-14277", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-13000", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-5586", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-7924", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-6474", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-12361", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-9352", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-13226", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-11031", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-7360", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-11547", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-7195", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-10347", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-8550", "candidate": "qwen3.5:0.8b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
-{"qid": "dolly-3513", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-966", "candidate": "qwen3.5:2b", "annotator": "claude (blind, AI reference annotator)", "verdict": "tie"}
-{"qid": "dolly-2604", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "better"}
-{"qid": "dolly-14058", "candidate": "qwen3.5:4b", "annotator": "claude (blind, AI reference annotator)", "verdict": "worse"}
+{"qid": "dolly-8798", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-12618", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10353", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-5688", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12449", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1569", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-9158", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10600", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-9332", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14888", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-5374", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14742", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14194", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-9214", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-9950", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-6566", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1042", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-5793", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-14059", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-10429", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12124", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-5450", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-8929", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-9699", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10614", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-4650", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-7482", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-5145", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-14430", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-10361", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-1408", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-5030", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12721", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-14155", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1795", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-7151", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10509", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-711", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-587", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-3177", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1768", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12169", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-11547", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1888", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-270", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10833", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-3830", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12617", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-6545", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-7290", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-3191", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-711", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-9711", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14882", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-13688", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-5694", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-2800", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14854", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-9060", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-452", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-139", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-5835", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-9117", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-9197", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-12459", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-6738", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1768", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-10880", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-6643", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-8239", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-124", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12843", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-6060", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-3406", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-4194", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-4711", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-34", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1254", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-6545", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-7290", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-9130", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-186", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-8992", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-2864", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-12459", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-9649", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-9711", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10983", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14292", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12201", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-11540", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-3886", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-1853", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-7593", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-895", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-8020", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-221", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-2155", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-11979", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-7806", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-14159", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-3042", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-14277", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-13000", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-5586", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-7924", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-6474", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-12361", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-9352", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-13226", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-11031", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-7360", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-11547", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-7195", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-10347", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-8550", "candidate": "qwen3.5:0.8b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}
+{"qid": "dolly-3513", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-966", "candidate": "qwen3.5:2b", "annotator": "frontier model (blind, silver-standard)", "verdict": "tie"}
+{"qid": "dolly-2604", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "better"}
+{"qid": "dolly-14058", "candidate": "qwen3.5:4b", "annotator": "frontier model (blind, silver-standard)", "verdict": "worse"}

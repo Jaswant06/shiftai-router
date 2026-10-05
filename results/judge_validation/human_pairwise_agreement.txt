@@ -1,0 +1,5 @@
+
+39 labelled pairs
+  same three-way verdict (better / tie / worse): 46.2%
+  same 'good enough' decision:                    56.4%   (Cohen's kappa 0.12)
+  good enough according to the labels: 25.6%, according to the judge: 48.7%
