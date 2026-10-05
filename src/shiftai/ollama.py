@@ -8,8 +8,10 @@ are more precise than timing the HTTP round trip.
 
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass
+from typing import Iterator
 
 import httpx
 
@@ -85,7 +87,7 @@ class OllamaClient:
         messages: list[dict],
         max_tokens: int = 512,
         temperature: float = 0.0,
-        seed: int = 0,
+        seed: int | None = 0,
         keep_alive: str | None = None,
         think: bool = False,
     ) -> ChatResult:
@@ -95,19 +97,54 @@ class OllamaClient:
         compared on the same footing; a thinking model would otherwise spend
         hidden tokens.
         """
-        body = {
-            "model": model,
-            "messages": messages,
-            "stream": False,
-            "think": think,
-            "options": {"temperature": temperature, "seed": seed, "num_predict": max_tokens},
-        }
+        body = self._chat_body(model, messages, max_tokens, temperature, seed, keep_alive, think, stream=False)
+        data = self._request("POST", "/api/chat", json=body)
+        return self._result(model, data.get("message", {}).get("content", ""), data)
+
+    def chat_stream(
+        self,
+        model: str,
+        messages: list[dict],
+        max_tokens: int = 1024,
+        temperature: float = 0.0,
+        seed: int | None = None,
+        think: bool = False,
+    ) -> Iterator[str | ChatResult]:
+        """Stream a chat turn: yields text pieces, then one final ChatResult."""
+        body = self._chat_body(model, messages, max_tokens, temperature, seed, None, think, stream=True)
+        pieces = []
+        try:
+            with self._http.stream("POST", "/api/chat", json=body) as response:
+                response.raise_for_status()
+                for line in response.iter_lines():
+                    if not line.strip():
+                        continue
+                    data = json.loads(line)
+                    piece = data.get("message", {}).get("content", "")
+                    if piece:
+                        pieces.append(piece)
+                        yield piece
+                    if data.get("done"):
+                        yield self._result(model, "".join(pieces), data)
+                        return
+        except httpx.ConnectError as exc:
+            raise OllamaUnavailable(f"Ollama not reachable at {self.host}. Is it running?") from exc
+
+    @staticmethod
+    def _chat_body(model, messages, max_tokens, temperature, seed, keep_alive, think, stream) -> dict:
+        options = {"temperature": temperature, "num_predict": max_tokens}
+        if seed is not None:
+            options["seed"] = seed
+        body = {"model": model, "messages": messages, "stream": stream, "think": think, "options": options}
         if keep_alive is not None:
             body["keep_alive"] = keep_alive
-        data = self._request("POST", "/api/chat", json=body)
+        return body
+
+    @staticmethod
+    def _result(model: str, text: str, data: dict) -> ChatResult:
         return ChatResult(
             model=model,
-            text=data.get("message", {}).get("content", ""),
+            text=text,
             total_s=data.get("total_duration", 0) / NS_PER_S,
             load_s=data.get("load_duration", 0) / NS_PER_S,
             prompt_tokens=data.get("prompt_eval_count", 0),

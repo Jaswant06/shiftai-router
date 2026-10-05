@@ -3,6 +3,7 @@
     shiftai models                      list installed models and what is loaded
     shiftai setup                       measure each model's cost on this machine
     shiftai ask "prompt" [--explain]    route a prompt and print the answer
+    shiftai serve                       OpenAI-compatible API at http://127.0.0.1:8800/v1
     shiftai bench --models a b c        profile models on the benchmark questions
 """
 
@@ -98,6 +99,18 @@ def cmd_bench(args) -> None:
     print(f"Records in {path}")
 
 
+def cmd_serve(args) -> None:
+    try:
+        import uvicorn
+
+        from .server import create_app
+    except ImportError:
+        sys.exit("The server needs extra packages: pip install 'shiftai-router[server]'")
+    print(f"ShiftAI OpenAI-compatible API on http://{args.host}:{args.port}/v1")
+    print(f"  model 'shiftai' routes at {args.quality:g}% quality; 'shiftai-95' etc. set the target per request")
+    uvicorn.run(create_app(default_quality=args.quality), host=args.host, port=args.port, log_level="warning")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="shiftai",
@@ -123,6 +136,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--artifact", help="use a router artifact file instead of the bundled one")
     p.add_argument("--profile", help="use a hardware profile file instead of ~/.shiftai/hardware.json")
     p.set_defaults(func=cmd_ask)
+
+    p = sub.add_parser("serve", help="run an OpenAI-compatible API that routes every request")
+    p.add_argument("--host", default="127.0.0.1")
+    p.add_argument("--port", type=int, default=8800)
+    p.add_argument("-q", "--quality", type=float, default=90, help="default quality target (default 90)")
+    p.set_defaults(func=cmd_serve)
 
     p = sub.add_parser("bench", help="profile models on the benchmark question set")
     p.add_argument("--models", nargs="+", required=True, help="models to profile, smallest first")

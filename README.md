@@ -220,8 +220,8 @@ The first two are reproducible with `scripts/ablations.py`.
 
 ## Tech stack
 
-Python, Ollama, NumPy, scikit-learn (training only), nomic-embed-text, psutil,
-httpx, Matplotlib, pytest.
+Python, Ollama, FastAPI, NumPy, scikit-learn (training only), nomic-embed-text,
+psutil, httpx, Matplotlib, pytest.
 
 ## Run it locally
 
@@ -253,6 +253,41 @@ shiftai ask "Rewrite this sentence to sound more formal: gonna be late, sorry"
 shiftai ask "A train leaves at 3pm going 80 km/h..." --quality 99 --explain
 shiftai ask "What is 12 x 12?" --dry-run   # show the decision only
 ```
+
+## Use it from any app
+
+ShiftAI includes an OpenAI-compatible server, so apps that already talk to
+OpenAI or a local OpenAI-style endpoint (Open WebUI, editor plugins, your own
+scripts) can use it by changing one URL:
+
+```bash
+pip install -e ".[server]"
+shiftai serve                  # http://127.0.0.1:8800/v1, default target 90%
+```
+
+```python
+from openai import OpenAI
+
+client = OpenAI(base_url="http://127.0.0.1:8800/v1", api_key="not-needed")
+reply = client.chat.completions.create(
+    model="shiftai",  # or "shiftai-95" for a 95% target, or a model name to skip routing
+    messages=[{"role": "user", "content": "Give me three ideas for a rainy weekend with kids."}],
+)
+print(reply.model)  # the local model that actually answered, e.g. qwen3.5:4b
+```
+
+- **Models:** `shiftai` routes at the default target, `shiftai-80` to
+  `shiftai-99` set the target per request, and any installed model name (such
+  as `qwen3.5:9b`) skips routing.
+- **Streaming** (`"stream": true`) uses the standard OpenAI event format.
+- **Every response says what happened:** the `model` field and the
+  `X-ShiftAI-Model` header name the model that answered, and a `shiftai` object
+  gives the reason and the predicted quality of each model.
+- **`GET /shiftai/stats`** reports requests per model and the estimated time
+  and energy saved compared with always using the largest model.
+  **`POST /shiftai/decide`** shows a routing decision without generating.
+- Routing reads the latest user message and the chosen model receives the whole
+  conversation. Tool calls and images are not supported yet.
 
 ## Reproduce the research
 
@@ -289,6 +324,7 @@ shiftai-router/
 │   ├── predictor.py     # cluster-based capability predictor
 │   ├── policy.py        # routing rule and delta tuning per quality target
 │   ├── router.py        # runtime router and decision explanation
+│   ├── server.py        # OpenAI-compatible API (shiftai serve)
 │   ├── evaluate.py      # offline scoring of policies, oracle
 │   ├── artifacts/       # the trained router shipped with the package
 │   └── cli.py           # shiftai command
@@ -326,8 +362,8 @@ shiftai-router/
 
 ## Roadmap
 
-- OpenAI-compatible local server with streaming, so existing apps can use
-  ShiftAI by changing one URL; live dashboard.
+- A live dashboard on top of the stats endpoint, and tool-call support in the
+  server.
 - Human labels for the open-ended judge, and better prompt-level signals to
   close the gap to the oracle.
 - Unknown-model support, smarter model loading and unloading, a cross-hardware

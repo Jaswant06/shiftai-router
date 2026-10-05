@@ -33,8 +33,14 @@ bench = [
     "scikit-learn>=1.5",
     "matplotlib>=3.8",
 ]
+# OpenAI-compatible local server: shiftai serve
+server = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+]
 dev = [
     "pytest>=8.0",
+    "fastapi>=0.110",
 ]
 
 [project.scripts]
@@ -48,3 +54,4 @@ shiftai = ["artifacts/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:fastapi.*", "ignore::DeprecationWarning:starlette.*"]
