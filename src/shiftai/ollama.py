@@ -26,6 +26,20 @@ class OllamaUnavailable(RuntimeError):
     """Raised when the Ollama server cannot be reached."""
 
 
+class ModelNotInstalled(RuntimeError):
+    """Raised when a request names a model Ollama does not have."""
+
+    def __init__(self, model: str):
+        super().__init__(f"Model '{model}' is not installed in Ollama. Install it with: ollama pull {model}")
+        self.model = model
+
+
+def _check(response: httpx.Response, model: str | None) -> None:
+    if response.status_code == 404 and model:
+        raise ModelNotInstalled(model)
+    response.raise_for_status()
+
+
 @dataclass
 class ChatResult:
     """A model's reply plus Ollama's server-side timing breakdown."""
@@ -66,7 +80,7 @@ class OllamaClient:
                 f"Ollama not reachable at {self.host}. Is it running? "
                 "Start it with `ollama serve` or open the Ollama app."
             ) from exc
-        response.raise_for_status()
+        _check(response, (kwargs.get("json") or {}).get("model"))
         return response.json()
 
     def tags(self) -> list[dict]:
@@ -115,7 +129,7 @@ class OllamaClient:
         pieces = []
         try:
             with self._http.stream("POST", "/api/chat", json=body) as response:
-                response.raise_for_status()
+                _check(response, model)
                 for line in response.iter_lines():
                     if not line.strip():
                         continue

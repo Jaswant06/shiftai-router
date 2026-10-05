@@ -27,7 +27,7 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass, field
 
-from .ollama import ChatResult, OllamaClient
+from .ollama import ChatResult, ModelNotInstalled, OllamaClient, OllamaUnavailable
 from .router import Decision, Router
 
 try:
@@ -131,6 +131,14 @@ def create_app(
     """Build the app. The router loads lazily so the server starts even before setup."""
     app = FastAPI(title="ShiftAI", description="OpenAI-compatible router for local models")
     state = {"router": router, "client": client}
+
+    @app.exception_handler(ModelNotInstalled)
+    def model_missing(_, exc: ModelNotInstalled):
+        return JSONResponse({"error": {"message": str(exc), "type": "model_not_found"}}, status_code=404)
+
+    @app.exception_handler(OllamaUnavailable)
+    def ollama_down(_, exc: OllamaUnavailable):
+        return JSONResponse({"error": {"message": str(exc), "type": "ollama_unavailable"}}, status_code=503)
     stats = ServerStats()
 
     def get_router() -> Router:

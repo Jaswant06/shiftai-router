@@ -236,7 +236,8 @@ psutil, httpx, Matplotlib, pytest.
 
 ## Run it locally
 
-You need [Ollama](https://ollama.com) running and at least two chat models of
+You need Python 3.10 or newer (tested on 3.10, 3.12, 3.13 and 3.14),
+[Ollama](https://ollama.com) running, and at least two chat models of
 different sizes. The bundled router is trained on the Qwen 3.5 ladder:
 
 ```bash
@@ -366,7 +367,9 @@ shiftai-router/
 - **One machine, one model family.** Results are from an Apple M5 and the Qwen
   3.5 ladder. Other hardware gets its own cost profile from `shiftai setup`,
   but quality estimates were measured on this ladder only, and models outside
-  it are not routed yet.
+  it are not routed yet. With only some of the four models installed, ShiftAI
+  routes among those and the quality target is relative to the largest one
+  present; the measured results assume all four.
 - **Output length is estimated** from typical lengths per model and prompt
   type, so time and energy estimates for very long answers are rough.
 - **Energy telemetry varies by platform** and is unavailable on most Windows

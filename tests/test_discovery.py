@@ -39,3 +39,17 @@ def test_friendly_error_when_ollama_is_down():
     client._http = httpx.Client(base_url=client.host, transport=httpx.MockTransport(refuse))
     with pytest.raises(OllamaUnavailable, match="Is it running"):
         client.tags()
+
+
+def test_friendly_error_when_model_missing():
+    from shiftai.ollama import ModelNotInstalled
+
+    def not_found(request):
+        return httpx.Response(404, json={"error": "model 'ghost' not found"})
+
+    client = OllamaClient(host="http://localhost:1")
+    client._http = httpx.Client(base_url=client.host, transport=httpx.MockTransport(not_found))
+    with pytest.raises(ModelNotInstalled, match="ollama pull ghost"):
+        client.embed("ghost", ["hi"])
+    with pytest.raises(ModelNotInstalled, match="ollama pull ghost"):
+        list(client.chat_stream("ghost", [{"role": "user", "content": "hi"}]))

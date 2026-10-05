@@ -123,3 +123,17 @@ def test_helpers():
 def test_empty_messages_rejected():
     client, _ = _client()
     assert client.post("/v1/chat/completions", json={"model": "shiftai", "messages": []}).status_code == 400
+
+
+def test_missing_model_returns_clear_error():
+    from shiftai.ollama import ModelNotInstalled
+
+    client, ollama = _client()
+
+    def missing(*args, **kwargs):
+        raise ModelNotInstalled("ghost")
+
+    ollama.chat = missing
+    response = client.post("/v1/chat/completions", json={"model": "ghost", "messages": [{"role": "user", "content": "hi"}]})
+    assert response.status_code == 404
+    assert "ollama pull ghost" in response.json()["error"]["message"]

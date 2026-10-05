@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shiftai-router"
-version = "0.1.0.dev0"
+version = "0.2.0"
 description = "ShiftAI: adaptive LLM routing for resource-efficient local AI. Sends each prompt to the smallest local model that can answer it."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -41,6 +41,7 @@ server = [
 dev = [
     "pytest>=8.0",
     "fastapi>=0.110",
+    "scikit-learn>=1.5",  # the predictor tests train small models
 ]
 
 [project.scripts]
