@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from .grading import grade
-from .judge import acceptable, load_judgments, pair_scores
+from .judge import acceptable, load_judgments, pair_scores, pointwise_labels
 from .profiler import load_records
 from .tasks import Question
 
@@ -43,15 +43,17 @@ def build_matrix(
     models: list[str],
     questions: dict[str, Question] | None = None,
     judged: dict[tuple[str, str], float] | None = None,
+    absolute: dict[tuple[str, str], bool] | None = None,
 ) -> ProfileMatrix:
     """Keep only questions that every model answered, in a stable order.
 
     When the questions are given, every stored reply is re-graded with the
     current grader, so a grading fix never requires re-running the models.
-    Open-ended questions take their labels from the judge scores instead: the
-    largest model is the reference (always acceptable) and every other model
-    is acceptable when judged at least as good. Open-ended questions that are
-    not fully judged yet are left out.
+    Open-ended questions take their labels from the judge instead. Pointwise
+    labels (`absolute`, each reply judged acceptable or not on its own) are
+    used when present; otherwise pairwise scores, where the largest model is
+    the reference and the others are acceptable when judged at least as good.
+    Open-ended questions that are not fully judged are left out.
     """
     by_key = {(r["model"], r["qid"]): r for r in records}
     task_of = {r["qid"]: r["task"] for r in records}
@@ -61,6 +63,8 @@ def build_matrix(
     def label(model: str, qid: str) -> bool | None:
         q = questions.get(qid) if questions else None
         if q is not None and q.judged:
+            if absolute:
+                return absolute.get((model, qid))
             if model == reference:
                 return True
             score = judged.get((model, qid))
@@ -104,7 +108,8 @@ def load_matrix(
     if models is None:
         models = json.loads((run_dir / "meta.json").read_text())["models"]
     judged = pair_scores(load_judgments(run_dir))
-    return build_matrix(load_records(run_dir / "records.jsonl"), models, questions, judged)
+    absolute = pointwise_labels(run_dir)
+    return build_matrix(load_records(run_dir / "records.jsonl"), models, questions, judged, absolute)
 
 
 def merge_matrices(matrices: list[ProfileMatrix]) -> ProfileMatrix:

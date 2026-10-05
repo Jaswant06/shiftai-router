@@ -89,3 +89,18 @@ def test_matrix_uses_judge_labels_and_skips_unjudged():
     matrix = build_matrix(records, ["small", "large"], {"d1": open_q, "d2": unjudged}, {("small", "d1"): 0.0})
     assert matrix.qids == ["d1"]
     assert matrix.correct.tolist() == [[False, True]]
+
+
+def test_parse_acceptability():
+    from shiftai.judge import parse_acceptability
+    assert parse_acceptability("It contradicts the reference.\nVerdict: UNACCEPTABLE") is False
+    assert parse_acceptability("Correct and complete.\n**Verdict:** ACCEPTABLE") is True
+    assert parse_acceptability("Looks fine to me.") is None
+
+
+def test_pointwise_labels_replace_pairwise_and_score_the_largest_model_too():
+    open_q = Question(id="d1", task="dolly_open_qa", question="Why?", answer="Because.")
+    records = [_record(m, "d1", "dolly") for m in ("small", "large")]
+    absolute = {("small", "d1"): True, ("large", "d1"): False}
+    matrix = build_matrix(records, ["small", "large"], {"d1": open_q}, judged={}, absolute=absolute)
+    assert matrix.correct.tolist() == [[True, False]]

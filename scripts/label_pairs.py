@@ -2,6 +2,7 @@
 
     python scripts/label_pairs.py --run runs/qwen35-open              # label
     python scripts/label_pairs.py --run runs/qwen35-open --report     # agreement only
+    python scripts/label_pairs.py --run runs/qwen35-open --report --labels reference_labels.jsonl
 
 You see a request and two answers in random order, without knowing which model
 wrote which. Type a (A is better), b (B is better), t (tie), s (skip) or
@@ -55,23 +56,25 @@ def sample_pairs(scores: dict, n: int) -> list[tuple[str, str]]:
 
 def report(labels: list[dict], scores: dict) -> None:
     rows = [(l, scores[(l["candidate"], l["qid"])]) for l in labels if (l["candidate"], l["qid"]) in scores]
+    for l, _ in rows:
+        l.setdefault("verdict", l.get("human"))
     if not rows:
         print("No labelled pairs yet.")
         return
     def category(score: float) -> str:
         return "better" if score > 0.5 else "worse" if score < 0.5 else "tie"
-    exact = sum(category(s) == l["human"] for l, s in rows) / len(rows)
-    human_ok = [l["human"] != "worse" for l, _ in rows]
+    exact = sum(category(s) == l["verdict"] for l, s in rows) / len(rows)
+    human_ok = [l["verdict"] != "worse" for l, _ in rows]
     judge_ok = [acceptable(s) for _, s in rows]
     agree = sum(h == j for h, j in zip(human_ok, judge_ok)) / len(rows)
     # Cohen's kappa on the yes/no "good enough" decision the router actually uses.
     p_h, p_j = sum(human_ok) / len(rows), sum(judge_ok) / len(rows)
     chance = p_h * p_j + (1 - p_h) * (1 - p_j)
     kappa = (agree - chance) / (1 - chance) if chance < 1 else float("nan")
-    print(f"\n{len(rows)} pairs labelled by hand")
+    print(f"\n{len(rows)} labelled pairs")
     print(f"  same three-way verdict (better / tie / worse): {exact:.1%}")
     print(f"  same 'good enough' decision:                    {agree:.1%}   (Cohen's kappa {kappa:.2f})")
-    print(f"  good enough according to you: {p_h:.1%}, according to the judge: {p_j:.1%}")
+    print(f"  good enough according to the labels: {p_h:.1%}, according to the judge: {p_j:.1%}")
 
 
 def main() -> None:
@@ -80,10 +83,11 @@ def main() -> None:
     parser.add_argument("--questions", type=Path, default=Path("data/open.jsonl"))
     parser.add_argument("-n", type=int, default=120, help="pairs to label (default 120)")
     parser.add_argument("--report", action="store_true", help="only print agreement")
+    parser.add_argument("--labels", default="human_labels.jsonl", help="labels file inside the run folder")
     args = parser.parse_args()
 
     scores = pair_scores(load_judgments(args.run))
-    labels_path = args.run / "human_labels.jsonl"
+    labels_path = args.run / args.labels
     labels = load_labels(labels_path)
     if args.report:
         report(labels, scores)
@@ -116,7 +120,7 @@ def main() -> None:
                 human = "tie"
             else:
                 human = "better" if (key == "a") == candidate_first else "worse"
-            out.write(json.dumps({"qid": qid, "candidate": candidate, "human": human}) + "\n")
+            out.write(json.dumps({"qid": qid, "candidate": candidate, "verdict": human, "annotator": "human"}) + "\n")
             out.flush()
 
     report(load_labels(labels_path), scores)

@@ -1,4 +1,18 @@
-"""Judge open-ended replies by comparing each one with the largest model's reply.
+"""Judge open-ended replies, on their own (pointwise) or against the largest model (pairwise).
+
+Pointwise judging is what the router trains on. Each reply is read on its own,
+next to Dolly's human-written reference answer for fact checking, and marked
+acceptable when a typical user would be satisfied with it, so every
+model, the largest included, gets a real quality score, just like accuracy on
+the benchmark questions. Showing one answer at a time also removes position
+bias by construction.
+
+Pairwise judging (below) was the first design and is kept for comparison.
+It defined quality as "at least as good as the largest model's reply", which
+gives the largest model 100% by construction and marks a slightly less
+polished but perfectly fine reply as a failure. Mixed with benchmark accuracy,
+that mismatch made the router send every open-ended prompt to the largest
+model and miss its quality targets.
 
 Open-ended requests ("write a short poem", "summarise this paragraph") have no
 single right answer, so quality is defined relative to the reference model,
@@ -57,6 +71,99 @@ If both answers are about equally good, or equally bad, say TIE.
 
 First explain your comparison in at most three short sentences.
 Then on the last line write exactly one of: Verdict: A, Verdict: B, Verdict: TIE"""
+
+POINTWISE_PROMPT = """You are a strict evaluator. Read a user request, a reference answer written by a person, and one AI assistant answer.
+
+Decide whether the AI answer is ACCEPTABLE: a typical user who asked this would be satisfied with it.
+An acceptable answer is correct (no significant factual or logical errors), does what was asked in the requested form, and covers what the request needs.
+Use the reference to check facts: if the AI answer contradicts the reference on a key fact, it is UNACCEPTABLE.
+The AI answer does not need to match the reference's wording, length or examples. For creative, opinion or brainstorming requests the reference is just one possible good answer, so judge those on whether the request is fulfilled.
+Minor style issues are fine. Fabricated facts, wrong answers, ignoring the request, or being cut off before the essential content make it UNACCEPTABLE.
+Length alone is not quality.
+
+[User request]
+{request}
+
+[Reference answer]
+{reference}
+
+[AI answer]
+{answer}
+
+First explain your judgement in at most three short sentences.
+Then on the last line write exactly one of: Verdict: ACCEPTABLE, Verdict: UNACCEPTABLE"""
+
+
+def parse_acceptability(raw: str) -> bool | None:
+    """True / False from the pointwise judge's reply, or None if unreadable."""
+    tagged = re.findall(r"verdict\s*[:=]?\s*\**\s*(UNACCEPTABLE|ACCEPTABLE)\b", raw, re.IGNORECASE)
+    if tagged:
+        return tagged[-1].upper() == "ACCEPTABLE"
+    return None
+
+
+def judge_answer(
+    client: OllamaClient, judge: str, request: str, answer: str, reference: str = ""
+) -> tuple[bool | None, str]:
+    """Ask the judge whether one reply is acceptable. Returns (verdict, raw reply).
+
+    A small judge cannot check facts from memory (it accepted "a baker's dozen
+    is 12" without one), so a human-written reference answer is included.
+    """
+    prompt = POINTWISE_PROMPT.format(
+        request=request[:MAX_REQUEST_CHARS], reference=reference[:MAX_REQUEST_CHARS] or "(none)", answer=answer
+    )
+    raw = client.chat(judge, [{"role": "user", "content": prompt}], max_tokens=JUDGE_MAX_TOKENS).text
+    return parse_acceptability(raw), raw
+
+
+def run_pointwise(
+    run_dir: str | Path,
+    questions: dict[str, Question],
+    models: list[str],
+    judge: str = DEFAULT_JUDGE,
+    client: OllamaClient | None = None,
+    on_verdict: Callable[[dict, int, int], None] | None = None,
+) -> Path:
+    """Judge every model's open-ended reply on its own. Resumable; writes pointwise.jsonl."""
+    client = client or OllamaClient()
+    run_dir = Path(run_dir)
+    out_path = run_dir / "pointwise.jsonl"
+    replies = {(r["model"], r["qid"]): r["reply"] for r in load_records(run_dir / "records.jsonl")}
+    done = {(v["model"], v["qid"]) for v in load_pointwise(run_dir)}
+    jobs = sorted(
+        (m, q) for (m, q) in replies if m in models and q in questions and questions[q].judged
+    )
+    total, count = len(jobs), len(done)
+    with out_path.open("a") as out:
+        for model, qid in jobs:
+            if (model, qid) in done:
+                continue
+            t0 = time.monotonic()
+            q = questions[qid]
+            verdict, raw = judge_answer(client, judge, q.prompt(), replies[(model, qid)], reference=q.answer)
+            row = {"qid": qid, "model": model, "acceptable": verdict, "raw": raw, "judge": judge,
+                   "seconds": time.monotonic() - t0}
+            out.write(json.dumps(row) + "\n")
+            out.flush()
+            count += 1
+            if on_verdict:
+                on_verdict(row, count, total)
+    return out_path
+
+
+def load_pointwise(run_dir: str | Path) -> list[dict]:
+    path = Path(run_dir) / "pointwise.jsonl"
+    if not path.exists():
+        return []
+    with path.open() as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
+def pointwise_labels(run_dir: str | Path) -> dict[tuple[str, str], bool]:
+    """(model, qid) -> acceptable, skipping unreadable verdicts."""
+    return {(v["model"], v["qid"]): v["acceptable"] for v in load_pointwise(run_dir) if v["acceptable"] is not None}
+
 
 # Verdict from the candidate's point of view: better, tie or worse than the reference.
 SCORE = {"better": 1.0, "tie": 0.5, "worse": 0.0}
