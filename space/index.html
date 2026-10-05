@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ShiftAI · right-size every prompt</title>
+  <meta name="description" content="ShiftAI sends each prompt to the smallest local language model that can answer it well. Interactive demo running the real router in your browser.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="eyebrow">shiftai · adaptive llm routing</div>
+      <h1>Right-size every prompt.</h1>
+      <p>Most prompts don't need the biggest model. ShiftAI sends each one to the <em>smallest local model that can
+        answer it well</em>, so you get answers faster and spend less energy, at a quality level you choose.</p>
+      <nav>
+        <a href="https://github.com/Jaswant06/shiftai-router" target="_blank" rel="noopener">code &amp; install</a>
+        <a href="https://github.com/Jaswant06/shiftai-router#results" target="_blank" rel="noopener">full results</a>
+      </nav>
+      <ol class="steps">
+        <li><span class="num">01</span><b>Reads the prompt</b>Turns it into an embedding and finds the most similar prompts it learned from.</li>
+        <li><span class="num">02</span><b>Predicts each model</b>Estimates how often each local model, from 0.8B to 9B parameters, gets prompts like this right.</li>
+        <li><span class="num">03</span><b>Picks the smallest that's good enough</b>Takes the fastest model that keeps your quality target, and the 9B when unsure.</li>
+      </ol>
+    </header>
+
+    <div class="tabs" role="tablist">
+      <button role="tab" class="tab active" data-tab="route" aria-selected="true">route a prompt</button>
+      <button role="tab" class="tab" data-tab="replay" aria-selected="false">replay real answers</button>
+      <button role="tab" class="tab" data-tab="results" aria-selected="false">results</button>
+    </div>
+
+    <section id="tab-route" class="panel">
+      <label class="label" for="prompt">your prompt</label>
+      <textarea id="prompt" rows="3" placeholder="Ask anything: a question, an email to write, a word problem, a coding task…"></textarea>
+      <div class="chips"><span class="label">or try</span><span id="chips" class="chip-row"></span></div>
+      <div class="controls">
+        <label class="slider">
+          <span class="label">quality target · % of the 9B model</span>
+          <span class="slider-row">
+            <input type="range" id="target" min="80" max="99" value="90" step="1">
+            <output id="target-out" class="num">90%</output>
+          </span>
+          <span id="target-hint" class="hint"></span>
+        </label>
+        <button id="route" class="primary">Route →</button>
+      </div>
+      <p class="fineprint">Runs entirely in your browser: your prompt is never sent anywhere. The first route downloads the
+        router's embedding model (274 MB, once).</p>
+      <div id="status" class="status num"></div>
+      <div id="result"><div class="placeholder">Write a prompt or pick an example, then press Route to see which model would answer and why.</div></div>
+    </section>
+
+    <section id="tab-replay" class="panel" hidden>
+      <p class="intro">Real prompts from the test set the router never saw while training, with the answers all four models
+        actually gave and how each was graded. Pick a prompt and move the quality target to see which answer ShiftAI would
+        have given you, and what it saved.</p>
+      <div class="controls replay-controls">
+        <label class="select">
+          <span class="label">held-out test prompt</span>
+          <span class="select-row"><select id="pick"></select><button id="shuffle" class="chip" type="button">random</button></span>
+        </label>
+        <label class="slider">
+          <span class="label">quality target</span>
+          <span class="slider-row">
+            <input type="range" id="replay-target" min="80" max="99" value="90" step="1">
+            <output id="replay-target-out" class="num">90%</output>
+          </span>
+        </label>
+      </div>
+      <div id="replay-summary"></div>
+      <div id="replay-answers"></div>
+    </section>
+
+    <section id="tab-results" class="panel" hidden>
+      <p class="intro">Each point is one way of answering all 760 test prompts. Higher means better answers; further left
+        means less energy. Always using the 9B sits top right. ShiftAI's line (labelled by quality target) keeps most of that
+        quality for much less energy.</p>
+      <div class="chart">
+        <img class="light-only" src="results_light.png" alt="Quality versus energy per prompt for ShiftAI, single models, a random split and the oracle">
+        <img class="dark-only" src="results_dark.png" alt="Quality versus energy per prompt for ShiftAI, single models, a random split and the oracle">
+      </div>
+      <div class="card">
+        <div class="eyebrow">760 held-out prompts · qwen 3.5 0.8B / 2B / 4B / 9B · apple m5 · energy measured</div>
+        <table class="results">
+          <thead><tr><th>quality target</th><th>quality kept</th><th>faster</th><th>less energy</th></tr></thead>
+          <tbody>
+            <tr><td>85%</td><td>83.3%</td><td>51.7%</td><td>51.5%</td></tr>
+            <tr><td>90%</td><td>89.9%</td><td>43.7%</td><td>40.0%</td></tr>
+            <tr><td>95%</td><td>95.7%</td><td>38.7%</td><td>31.8%</td></tr>
+            <tr><td>99%</td><td>99.6%</td><td>13.8%</td><td>13.0%</td></tr>
+          </tbody>
+        </table>
+        <p class="reason">Savings are against always using the 9B model, router overhead included. On open-ended
+          requests at the 90% target ShiftAI kept 94% of the 9B's quality with 46% less latency. Between 80% and 95% a
+          well-tuned random split of models is about as efficient; the clear win is at 99%.
+          <a href="https://github.com/Jaswant06/shiftai-router#results" target="_blank" rel="noopener">Method, baselines and limitations</a>.</p>
+      </div>
+    </section>
+
+    <footer class="foot">built by Jaswant Singh · <a href="https://github.com/Jaswant06/shiftai-router" target="_blank" rel="noopener">github</a> · MIT</footer>
+  </main>
+  <script type="module" src="app.js?v=6"></script>
+</body>
+</html>

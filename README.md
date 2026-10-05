@@ -32,6 +32,9 @@ brainstorming, summaries) it kept **94%** of the 9B's quality at **46% less
 latency** and **36% less energy**. [Full results below](#results), including
 where a simple baseline does just as well.
 
+**[Try the live demo](https://huggingface.co/spaces/JaswantDev/shiftai-router)**: the real router running in your browser, plus
+the actual answers all four models gave on held-out test prompts.
+
 ## Why route at all
 
 Local models are a ladder of trade-offs: a 0.8B model answers in a fraction of a
@@ -235,8 +238,9 @@ The first two are reproducible with `scripts/ablations.py`.
 
 ## Tech stack
 
-Python, Ollama, FastAPI, NumPy, scikit-learn (training only), nomic-embed-text,
-psutil, httpx, Matplotlib, pytest.
+Python, Ollama, FastAPI, Docker, NumPy, scikit-learn (training only),
+nomic-embed-text, psutil, httpx, Matplotlib, pytest. The browser demo uses
+Transformers.js and plain JavaScript.
 
 ## Run it locally
 
@@ -311,6 +315,19 @@ print(reply.model)  # the local model that actually answered, e.g. qwen3.5:4b
 - Routing reads the latest user message and the chosen model receives the whole
   conversation. Tool calls and images are not supported yet.
 
+### With Docker
+
+The API also runs in a container. Ollama stays on the host, where it can use
+the GPU, and `shiftai setup` runs on the host once to measure it:
+
+```bash
+docker build -t shiftai .
+docker run -p 8800:8800 -v ~/.shiftai:/root/.shiftai shiftai
+```
+
+On Linux, add `--add-host=host.docker.internal:host-gateway` so the container
+can reach Ollama on the host.
+
 ## Reproduce the research
 
 ```bash
@@ -359,7 +376,9 @@ shiftai-router/
 │   └── ablations.py     # rejected designs, with numbers
 ├── data/                # sampled prompt sets (JSONL)
 ├── results/             # metrics, tables, charts, judge validation labels
+├── space/               # browser demo: the router ported to JavaScript
 ├── tests/               # unit tests (no Ollama needed)
+├── Dockerfile           # the API server in a container
 └── pyproject.toml
 ```
 
