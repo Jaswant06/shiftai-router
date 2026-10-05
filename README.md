@@ -10,22 +10,23 @@ fast model; hard prompts go to a big one.
 > machine -> the smallest model that is good enough answers.
 
 ```text
-$ shiftai ask "A bakery sells 24 muffins per tray. On Monday it baked 7 trays
-  and sold all but 13 muffins. How many muffins were sold?" --quality 99 --explain
-Quality target: 99% of the largest model (latency optimised)
+$ shiftai ask "Write a polite two-sentence email declining a meeting on Friday." --quality 90 --explain
+Quality target: 90% of the largest model (latency optimised)
 model                    pred. quality  relative  est. time  est. energy  loaded
-qwen3.5:0.8b                      0.53       57%      3.82s          n/a
-qwen3.5:2b                        0.72       77%      3.39s          n/a  yes
-qwen3.5:4b                        0.92       99%      7.84s          n/a
-qwen3.5:9b                        0.93      100%      8.71s          n/a  yes
+qwen3.5:0.8b                      0.47       60%      3.71s          n/a
+qwen3.5:2b                        0.58       74%      5.41s          n/a
+qwen3.5:4b                        0.76       97%      7.87s          n/a
+qwen3.5:9b                        0.78      100%     11.83s          n/a
 Selected: qwen3.5:4b  (cheapest model predicted close enough to the largest for your quality target)
-Prompt familiarity: high   Router overhead: 34 ms
+Prompt familiarity: high   Router overhead: 35 ms
 ```
 
-**Headline result (v0.1, 600 held-out questions, Apple M5):** asked to keep 99%
-of the 9B model's quality, ShiftAI kept **99.6%** while answering **29% faster**
-with **26% less energy**. The best random split between fixed models saved only
-12% and 11% at the same quality. [Full results below.](#results)
+**Headline result (760 held-out prompts, Apple M5):** at the 90% setting
+ShiftAI kept **89.9%** of the 9B model's quality while answering **44% faster**
+with **40% less energy**. On everyday open-ended requests (writing, questions,
+brainstorming, summaries) it kept **94%** of the 9B's quality at **46% less
+latency** and **36% less energy**. [Full results below](#results), including
+where a simple baseline does just as well.
 
 ## Why route at all
 
@@ -56,15 +57,15 @@ local hardware profile + loaded models + battery ----> estimated cost per model
 - **Capability predictor:** prompts are split by type (multiple choice or
   open-ended) and grouped into clusters of similar prompts using a
   `nomic-embed-text` embedding. Each cluster stores every model's measured
-  accuracy, shrunk toward the type average so small clusters stay sensible. A
+  quality, shrunk toward the type average so small clusters stay sensible. A
   new prompt gets the estimates of its nearest cluster
   (`src/shiftai/predictor.py`). A per-prompt logistic regression was tried and
   rejected; see [what did not work](#what-did-not-work).
-- **Relative quality target:** `--quality 95` means "keep at least 95% of what
+- **Relative quality target:** `--quality 90` means "keep at least 90% of what
   the largest model would score". The router takes the cheapest model predicted
   to reach at least (1 - delta) of the largest model's quality. For each target,
   the number of clusters and delta are tuned on out-of-fold predictions so the
-  routed accuracy over the whole workload meets the target
+  routed quality over the whole workload meets the target
   (`src/shiftai/policy.py`). `--quality 100` simply uses the largest model.
 - **Cost model:** `shiftai setup` measures each model's cold load time, prompt
   speed, generation speed, memory and power on your machine
@@ -78,24 +79,65 @@ local hardware profile + loaded models + battery ----> estimated cost per model
 - **Honest overhead:** the router's own cost (embedding plus prediction) is
   measured and included in every reported result.
 
-## Training data and evaluation
+## Training data
 
-The router is trained on 3,000 questions with answers a script can check,
-sampled once with a fixed seed (`scripts/build_question_set.py`):
+3,800 prompts, sampled once with fixed seeds. Every model in the ladder answers
+every prompt with temperature 0, a fixed seed and thinking turned off.
 
-| Source | Questions | What it tests |
-|---|---:|---|
-| GSM8K | 1,000 | multi-step math word problems |
-| MMLU | 1,000 | multiple choice across 57 subjects |
-| ARC-Easy | 500 | grade-school science |
-| ARC-Challenge | 500 | harder grade-school science |
+| Source | Prompts | What it tests | How it is graded |
+|---|---:|---|---|
+| GSM8K | 1,000 | multi-step math word problems | final number |
+| MMLU | 1,000 | multiple choice across 57 subjects | chosen letter |
+| ARC-Easy / Challenge | 1,000 | grade-school science | chosen letter |
+| Dolly | 600 | real requests: writing, brainstorming, questions, summaries, extraction, classification | judge model (below) |
+| MBPP | 200 | short Python coding tasks | unit tests are run |
 
-Every model in the ladder answers every question with temperature 0, a fixed
-seed and thinking turned off, and each answer is graded deterministically
-(`src/shiftai/grading.py`). 20% of the questions (600) are held out as a test
-set that nothing touches until the final evaluation. On the other 80%, 5-fold
-out-of-fold predictions are used to choose the number of clusters and tune
-delta for each target. Because every model answered every question, any routing
+Code is run in a separate Python process in an empty temporary folder with a
+time limit, and code that reaches for the file system, the shell or the network
+is never run (`src/shiftai/grading.py`).
+
+### Judging open-ended answers
+
+Open-ended requests have no single right answer, so a local judge model
+(`gemma4:e4b`, from a different family than the models it judges) reads each
+answer next to Dolly's human-written reference answer and decides whether a
+typical user would be satisfied (`src/shiftai/judge.py`). Getting this right
+took three attempts, each measured against 100 to 120 blind labels:
+
+1. **Side-by-side comparison with the 9B's answer, one-word verdict.** Llama
+   3.1 8B and Qwen 3.5 9B picked whichever answer was shown first 88 to 91% of
+   the time, and Gemma's verdict flipped with the order in 40 of 72 pairs. Asking for a short explanation before the
+   verdict fixed the position bias, but agreement with blind labels was only
+   64% (kappa 0.25). Worse, defining quality as "at least as good as the 9B"
+   gives the 9B 100% by construction, so the router sent every open-ended prompt
+   to it.
+2. **Each answer judged on its own, without a reference.** The small judge
+   could not check facts: it accepted "a baker's dozen is 12".
+3. **Each answer judged on its own, with the human reference answer** (used).
+   Agreement with blind labels rose to 76% (kappa 0.47). The judge's
+   "unacceptable" was right every time (19 of 19), but its "acceptable" was too
+   generous, especially for small models:
+
+| Model | Judge says acceptable | Blind labels say acceptable | P(truly acceptable, given judge says yes) |
+|---|---:|---:|---:|
+| qwen3.5:0.8b | 56% | 32% | 0.61 |
+| qwen3.5:2b | 76% | 44% | 0.60 |
+| qwen3.5:4b | 92% | 72% | 0.77 |
+| qwen3.5:9b | 100% | 80% | 0.78 |
+
+So each "acceptable" verdict is converted into that probability (smoothed
+toward the overall rate, since there are 25 labels per model), and "unacceptable"
+stays 0. **The blind labels were produced by an AI model (Claude), not a person**,
+so they are a stronger reference annotator rather than human ground truth; they
+are published in [`results/judge_validation/`](results/judge_validation/), and
+`scripts/label_pairs.py` lets anyone add human labels.
+
+## Evaluation
+
+20% of the prompts (760: 606 benchmark, 117 open-ended, 37 coding) are held out
+as a test set that nothing touches until the final evaluation. On the other
+80%, 5-fold out-of-fold predictions choose the number of clusters and tune
+delta for each target. Because every model answered every prompt, any routing
 policy can be scored exactly on the test set and compared with:
 
 - each single model on its own (including always-smallest and always-largest)
@@ -114,55 +156,67 @@ not measured, never guessed.
 
 Qwen 3.5 ladder (0.8B, 2B, 4B, 9B) on an Apple M5 with 24 GB of RAM, energy
 measured with `powermetrics`. Savings are relative to always using the 9B model,
-on the 600 held-out test questions, with the router's own overhead (about 10 ms
+on the 760 held-out test prompts, with the router's own overhead (about 10 ms
 per prompt) included.
 
-![Accuracy versus energy per prompt](results/pareto_energy.png)
+![Quality versus energy per prompt](results/pareto_energy.png)
 
-| Quality target | ShiftAI quality kept | ShiftAI faster | ShiftAI less energy | Random split faster | Random split less energy |
-|---|---:|---:|---:|---:|---:|
-| 80% | 82.3% | 59.9% | 68.1% | 62.3% | 69.1% |
-| 85% | 89.3% | 47.7% | 51.6% | 52.9% | 58.4% |
-| 90% | 91.7% | 40.5% | 41.0% | 44.4% | 47.2% |
-| 95% | 96.4% | 32.9% | 30.6% | 35.6% | 34.4% |
-| **99%** | **99.6%** | **29.3%** | **25.6%** | 11.6% | 10.7% |
+| Quality target | ShiftAI quality kept | ShiftAI faster | ShiftAI less energy | Random split quality | Random split faster | Random split less energy |
+|---|---:|---:|---:|---:|---:|---:|
+| 80% | 78.6% | 58.8% | 66.1% | 79.6% | 57.9% | 63.9% |
+| 85% | 83.3% | 51.7% | 51.5% | 83.6% | 51.1% | 52.8% |
+| 90% | 89.9% | 43.7% | 40.0% | 89.1% | 46.0% | 43.8% |
+| 95% | 95.7% | 38.7% | 31.8% | 94.1% | 40.7% | 34.9% |
+| 99% | 99.6% | 13.8% | 13.0% | 98.6% | 10.7% | 9.2% |
+
+ShiftAI by kind of prompt:
+
+| Quality target | Benchmark (606) | Open-ended (117) | Coding (37) |
+|---|---|---|---|
+| 85% | 81.6% kept, 59% faster, 68% less energy | 94.2% kept, 46% faster, 36% less energy | 81.0% kept, 33% faster, 20% less energy |
+| 90% | 89.6% kept, 43% faster, 46% less energy | 94.3% kept, 46% faster, 36% less energy | 81.0% kept, 33% faster, 20% less energy |
+| 95% | 96.5% kept, 33% faster, 30% less energy | 94.5% kept, 45% faster, 35% less energy | 81.0% kept, 33% faster, 20% less energy |
+| 99% | 99.6% kept, 29% faster, 26% less energy | 99.1% kept, no savings | 100% kept, no savings |
 
 What the results show:
 
-- **ShiftAI met every quality target on unseen questions**, from 80% to 99%.
-- **Its clear win is at the strict end.** At 99% it keeps 99.6% of the 9B's
-  quality while saving 2.5 times more time and energy than the best random
-  split. The reason is visible in the data: the 4B model is nearly as good as
-  the 9B on math (92% versus 93%) but much faster on long answers, so math
-  prompts go to the 4B and the rest stay on the 9B.
-- **At looser targets it is not yet better than a well-tuned random split.**
-  Between 80% and 95% ShiftAI meets the target but overshoots on quality (89%
-  when asked for 85%), so it saves slightly less. Being honest about this is the
-  point of including the baseline.
-- **There is a lot of room left.** The oracle keeps 106% of the 9B's quality
-  (several models together get more questions right than the 9B alone) at 63%
-  less latency. The bottleneck is how much can be predicted from the prompt
+- **Open-ended prompts are now routed.** In v0.1 every open-ended prompt went to
+  the 9B. Now emails, explanations and brainstorming requests mostly go to the
+  4B, which on these requests delivers about 90% of the 9B's quality according
+  to the blind labels (72% versus 80% acceptable) at about 45% less latency.
+- **Targets are met within noise, not always exactly.** ShiftAI met the 95% and
+  99% targets, landed at 89.9% for 90%, and fell 1.4 and 1.7 points short at
+  80% and 85%. With 760 test prompts the 95% confidence interval is about plus
+  or minus 3 points.
+- **Against a well-tuned random split, ShiftAI is about even.** Between 80% and
+  95% the two trade within a few points, with the random split saving slightly
+  more and ShiftAI keeping slightly more quality. At 99% ShiftAI saves more
+  (13.8% versus 10.7%) and is the only one of the two that meets the target.
+- **The strongest effect is on math.** The 4B is nearly as good as the 9B on
+  GSM8K but much faster, which is why the benchmark prompts still save 29% at
+  the 99% target.
+- **There is a lot of room left.** The oracle keeps 103% of the 9B's quality at
+  68% less latency. The bottleneck is how much can be predicted from the prompt
   before running any model.
-- **The 0.8B model was never chosen.** It is about as expensive as the 2B on
-  this machine but much less accurate.
 
-Every number above can be regenerated with `scripts/train_router.py`; the full
-metrics, including p95 latency and 95% confidence intervals (about plus or
-minus 3 points on 600 questions), are in [`results/`](results/).
+The full metrics, including p95 latency and confidence intervals, are in
+[`results/`](results/); `scripts/train_router.py` regenerates every number.
 
 ## What did not work
 
-Both are reproducible with `scripts/ablations.py`.
-
 - **Per-prompt logistic regression** over the full embedding ranked right and
-  wrong answers only moderately well (0.64 to 0.72 AUC). Tuned and routed the
-  same way, it matched the cluster router between 80% and 95% but **missed the
-  99% target** (98.5%) and saved 18% instead of 29% there.
+  wrong answers only moderately well (0.64 to 0.72 AUC). On the benchmark set,
+  tuned and routed the same way, it matched the cluster router between 80% and
+  95% but missed the 99% target (98.5%) and saved 18% instead of 29% there.
 - **Agreement cascades** (run two cheaper models, accept the answer if they
   agree, otherwise escalate) kept quality high but were **20% to 50% slower and
   used more energy** than always running the 9B, because running models one
   after another adds up. Deciding before running anything is the better design
   on a single machine.
+- **Side-by-side judging** and **judging without a reference answer**, as
+  described [above](#judging-open-ended-answers).
+
+The first two are reproducible with `scripts/ablations.py`.
 
 ## Tech stack
 
@@ -204,14 +258,18 @@ shiftai ask "What is 12 x 12?" --dry-run   # show the decision only
 
 ```bash
 pip install -e ".[bench,dev]"
-python scripts/build_question_set.py                       # 3,000 questions
+python scripts/build_question_set.py      # 3,000 benchmark questions
+python scripts/build_open_set.py          # 600 Dolly + 200 MBPP prompts
 shiftai bench --models qwen3.5:0.8b qwen3.5:2b qwen3.5:4b qwen3.5:9b --out runs/qwen35
-python scripts/train_router.py --run runs/qwen35           # artifact, metrics, charts
+shiftai bench --models qwen3.5:0.8b qwen3.5:2b qwen3.5:4b qwen3.5:9b --questions data/open.jsonl --out runs/qwen35-open
+python scripts/judge_pointwise.py --run runs/qwen35-open --questions data/open.jsonl
+cp results/judge_validation/reference_pointwise.jsonl runs/qwen35-open/
+python scripts/train_router.py --run runs/qwen35 runs/qwen35-open --questions data/questions.jsonl data/open.jsonl
 pytest
 ```
 
-Profiling is resumable: if it stops, run the same command again and it
-continues where it left off.
+Profiling and judging are resumable: if they stop, run the same command again
+and they continue where they left off.
 
 ## Project structure
 
@@ -220,11 +278,12 @@ shiftai-router/
 ├── src/shiftai/
 │   ├── ollama.py        # Ollama API client with server-side timings
 │   ├── discovery.py     # find installed models and what is loaded
-│   ├── tasks.py         # question format and prompts
-│   ├── grading.py       # deterministic answer extraction and grading
+│   ├── tasks.py         # prompt kinds, how each is prompted
+│   ├── grading.py       # answer extraction, grading, sandboxed code tests
+│   ├── judge.py         # open-ended judging and leniency correction
 │   ├── energy.py        # powermetrics / nvidia-smi / RAPL power sampling
 │   ├── system.py        # battery, CPU and memory state
-│   ├── profiler.py      # run every model on every question (resumable)
+│   ├── profiler.py      # run every model on every prompt (resumable)
 │   ├── calibrate.py     # per-machine cost profile (shiftai setup)
 │   ├── features.py      # prompt type and embedding
 │   ├── predictor.py     # cluster-based capability predictor
@@ -234,40 +293,45 @@ shiftai-router/
 │   ├── artifacts/       # the trained router shipped with the package
 │   └── cli.py           # shiftai command
 ├── scripts/
-│   ├── build_question_set.py
+│   ├── build_question_set.py, build_open_set.py
+│   ├── judge_pointwise.py, judge_run.py   # pointwise and side-by-side judging
+│   ├── label_pairs.py, judge_agreement.py # blind labelling and agreement
 │   ├── train_router.py  # train, evaluate, write results/
-│   └── ablations.py     # the designs that were rejected, with numbers
-├── data/                # sampled question sets (JSONL)
-├── results/             # metrics, summary table, Pareto charts
+│   └── ablations.py     # rejected designs, with numbers
+├── data/                # sampled prompt sets (JSONL)
+├── results/             # metrics, tables, charts, judge validation labels
 ├── tests/               # unit tests (no Ollama needed)
 └── pyproject.toml
 ```
 
 ## Limitations
 
-- **Trained on benchmark questions, so savings today come from math and
-  multiple-choice prompts.** Open-ended prompts such as emails, code or a
-  factual question without options look unlike the training data, so ShiftAI
-  sends them to the largest model rather than guess. An open-ended dataset,
-  judged against the largest model's answer, is the main goal of the next
-  version.
+- **Open-ended quality comes from a small judge**, corrected with 100 blind
+  labels from an AI annotator, not people. The correction is a handful of
+  numbers fitted on 25 labels per model, so open-ended results carry more
+  uncertainty than benchmark results.
+- **Cluster estimates are coarse.** A new prompt inherits the quality of its
+  nearest group, so an easy question that resembles harder ones (for example
+  "What is the capital of France?") can be routed to a bigger model than it
+  needs.
+- **Coding results rest on 37 test prompts**, too few for confident claims.
 - **One machine, one model family.** Results are from an Apple M5 and the Qwen
   3.5 ladder. Other hardware gets its own cost profile from `shiftai setup`,
-  but the quality estimates were measured on this ladder only.
-- **Bundled router knows one model family.** Models it was not trained on are
-  not routed yet; support via model metadata plus a short calibration quiz is
-  planned.
-- **Output length is estimated** from typical lengths per model, so time and
-  energy estimates for very long answers are rough.
+  but quality estimates were measured on this ladder only, and models outside
+  it are not routed yet.
+- **Output length is estimated** from typical lengths per model and prompt
+  type, so time and energy estimates for very long answers are rough.
 - **Energy telemetry varies by platform** and is unavailable on most Windows
   machines.
 
 ## Roadmap
 
-- v0.2: OpenAI-compatible local server with streaming, so existing apps can use
-  ShiftAI by changing one URL; live dashboard; open-ended evaluation set.
-- v0.3: unknown-model support, smarter model loading and unloading,
-  cross-hardware transfer study, technical write-up.
+- OpenAI-compatible local server with streaming, so existing apps can use
+  ShiftAI by changing one URL; live dashboard.
+- Human labels for the open-ended judge, and better prompt-level signals to
+  close the gap to the oracle.
+- Unknown-model support, smarter model loading and unloading, a cross-hardware
+  transfer study, and a technical write-up.
 
 ## License
 
@@ -277,4 +341,4 @@ MIT, see [LICENSE](LICENSE).
 
 Keywords: llm router, local llm, ollama, model routing, inference optimization,
 energy efficient ai, on-device ai, adaptive inference, small language models,
-Python.
+llm as a judge, Python.

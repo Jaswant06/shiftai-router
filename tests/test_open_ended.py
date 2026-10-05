@@ -104,3 +104,16 @@ def test_pointwise_labels_replace_pairwise_and_score_the_largest_model_too():
     absolute = {("small", "d1"): True, ("large", "d1"): False}
     matrix = build_matrix(records, ["small", "large"], {"d1": open_q}, judged={}, absolute=absolute)
     assert matrix.correct.tolist() == [[True, False]]
+
+
+def test_judge_calibration_trusts_no_and_discounts_yes():
+    from shiftai.judge import calibrate_judge
+    judge = {("small", f"q{i}"): i < 8 for i in range(10)}
+    judge.update({("large", f"q{i}"): True for i in range(10)})
+    reference = (
+        [{"model": "small", "qid": f"q{i}", "acceptable": i < 4} for i in range(10)]
+        + [{"model": "large", "qid": f"q{i}", "acceptable": i < 9} for i in range(10)]
+    )
+    rates = calibrate_judge(judge, reference, prior_strength=0.0)
+    assert rates["small"] == (0.5, 0.0)   # 4 of 8 "yes" were right; both "no" were right
+    assert rates["large"][0] == 0.9

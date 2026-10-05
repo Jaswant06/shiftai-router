@@ -165,6 +165,56 @@ def pointwise_labels(run_dir: str | Path) -> dict[tuple[str, str], bool]:
     return {(v["model"], v["qid"]): v["acceptable"] for v in load_pointwise(run_dir) if v["acceptable"] is not None}
 
 
+def calibrate_judge(
+    judge: dict[tuple[str, str], bool],
+    reference: list[dict],
+    prior_strength: float = 5.0,
+) -> dict[str, tuple[float, float]]:
+    """Per model: P(truly acceptable | judge said yes) and P(... | judge said no).
+
+    `reference` rows are independent labels {"qid", "model", "acceptable"}.
+    Each model's rates are shrunk toward the pooled rate with `prior_strength`
+    pseudo-labels, because only a few dozen labels exist per model.
+    On the profiling run the judge's "no" was always right but its "yes" was
+    too generous, most of all for the smallest models.
+    """
+    counts: dict[tuple[str, bool], list[int]] = {}
+    for row in reference:
+        verdict = judge.get((row["model"], row["qid"]))
+        if verdict is None:
+            continue
+        for key in ((row["model"], verdict), ("*", verdict)):
+            counts.setdefault(key, [0, 0])
+            counts[key][0] += int(row["acceptable"])
+            counts[key][1] += 1
+
+    def rate(model: str, verdict: bool) -> float:
+        pooled_yes, pooled_n = counts.get(("*", verdict), [int(verdict), 1])
+        pooled = pooled_yes / pooled_n
+        yes, n = counts.get((model, verdict), [0, 0])
+        if n + prior_strength == 0:
+            return pooled
+        return (yes + prior_strength * pooled) / (n + prior_strength)
+
+    models = {m for m, _ in judge}
+    return {m: (rate(m, True), rate(m, False)) for m in models}
+
+
+def calibrated_labels(run_dir: str | Path, reference_file: str = "reference_pointwise.jsonl") -> dict[tuple[str, str], float]:
+    """Pointwise labels as probabilities of being truly acceptable.
+
+    Without a reference file the raw judge verdicts are returned as 1.0 / 0.0.
+    """
+    judge = pointwise_labels(run_dir)
+    path = Path(run_dir) / reference_file
+    if not path.exists():
+        return {key: float(v) for key, v in judge.items()}
+    with path.open() as f:
+        reference = [json.loads(line) for line in f if line.strip()]
+    rates = calibrate_judge(judge, reference)
+    return {(m, q): rates[m][0] if v else rates[m][1] for (m, q), v in judge.items()}
+
+
 # Verdict from the candidate's point of view: better, tie or worse than the reference.
 SCORE = {"better": 1.0, "tie": 0.5, "worse": 0.0}
 

@@ -16,7 +16,7 @@ from pathlib import Path
 import numpy as np
 
 from .grading import grade
-from .judge import acceptable, load_judgments, pair_scores, pointwise_labels
+from .judge import acceptable, calibrated_labels, load_judgments, pair_scores
 from .profiler import load_records
 from .tasks import Question
 
@@ -28,7 +28,7 @@ class ProfileMatrix:
     qids: list[str]
     tasks: list[str]
     models: list[str]
-    correct: np.ndarray       # (n, m) bool
+    correct: np.ndarray       # (n, m) 1/0, or a probability for judged open-ended replies
     latency: np.ndarray       # (n, m) seconds, warm (load time excluded)
     energy: np.ndarray        # (n, m) joules, NaN when not measured
     output_tokens: np.ndarray  # (n, m)
@@ -43,17 +43,18 @@ def build_matrix(
     models: list[str],
     questions: dict[str, Question] | None = None,
     judged: dict[tuple[str, str], float] | None = None,
-    absolute: dict[tuple[str, str], bool] | None = None,
+    absolute: dict[tuple[str, str], float] | None = None,
 ) -> ProfileMatrix:
     """Keep only questions that every model answered, in a stable order.
 
     When the questions are given, every stored reply is re-graded with the
     current grader, so a grading fix never requires re-running the models.
     Open-ended questions take their labels from the judge instead. Pointwise
-    labels (`absolute`, each reply judged acceptable or not on its own) are
-    used when present; otherwise pairwise scores, where the largest model is
-    the reference and the others are acceptable when judged at least as good.
-    Open-ended questions that are not fully judged are left out.
+    labels (`absolute`: the probability each reply is acceptable, after
+    correcting for judge leniency) are used when present; otherwise pairwise
+    scores, where the largest model is the reference and the others are
+    acceptable when judged at least as good. Open-ended questions that are not
+    fully judged are left out.
     """
     by_key = {(r["model"], r["qid"]): r for r in records}
     task_of = {r["qid"]: r["task"] for r in records}
@@ -83,7 +84,7 @@ def build_matrix(
         rows.append((q, labels))
 
     shape = (len(rows), len(models))
-    correct = np.zeros(shape, dtype=bool)
+    correct = np.zeros(shape)
     latency = np.zeros(shape)
     energy = np.full(shape, np.nan)
     tokens = np.zeros(shape)
@@ -108,7 +109,7 @@ def load_matrix(
     if models is None:
         models = json.loads((run_dir / "meta.json").read_text())["models"]
     judged = pair_scores(load_judgments(run_dir))
-    absolute = pointwise_labels(run_dir)
+    absolute = calibrated_labels(run_dir)
     return build_matrix(load_records(run_dir / "records.jsonl"), models, questions, judged, absolute)
 
 
@@ -137,7 +138,11 @@ def split_indices(n: int, seed: int = 0, fractions=(0.6, 0.2, 0.2)) -> tuple[np.
 
 
 def oracle_choice(correct: np.ndarray, cost: np.ndarray) -> np.ndarray:
-    """Cheapest correct model per question; cheapest overall when none is correct."""
+    """Cheapest correct model per question; cheapest overall when none is correct.
+
+    Soft labels count as correct at 0.5 or above.
+    """
+    correct = np.asarray(correct) >= 0.5
     masked = np.where(correct, cost, np.inf)
     best = masked.argmin(axis=1)
     none_right = ~correct.any(axis=1)

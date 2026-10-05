@@ -1,0 +1,7 @@
+100 replies judged and labelled
+  agreement 76.0%   Cohen's kappa 0.47
+  acceptable: labels 57.0%, judge 81.0%
+  qwen3.5:0.8b   n= 25  labels 32.0%  judge 56.0%  agree 76.0%
+  qwen3.5:2b     n= 25  labels 44.0%  judge 76.0%  agree 68.0%
+  qwen3.5:4b     n= 25  labels 72.0%  judge 92.0%  agree 80.0%
+  qwen3.5:9b     n= 25  labels 80.0%  judge 100.0%  agree 80.0%
