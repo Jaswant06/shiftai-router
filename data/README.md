@@ -1,8 +1,8 @@
 # Question sets
 
-`questions.jsonl` (3,000 questions) and `questions_pilot.jsonl` (60) are
-sampled with a fixed seed by `scripts/build_question_set.py`, and `open.jsonl`
-(800 prompts) and `open_pilot.jsonl` (30) by `scripts/build_open_set.py`, from:
+`questions.jsonl` (3,000 questions) is sampled with a fixed seed by
+`scripts/build_question_set.py`, and `open.jsonl` (800 prompts) by
+`scripts/build_open_set.py`, from:
 
 | Source | License | Link |
 |---|---|---|

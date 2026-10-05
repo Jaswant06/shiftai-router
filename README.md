@@ -1,5 +1,9 @@
 # ShiftAI: Adaptive LLM Routing for Resource-Efficient Local AI
 
+[![tests](https://github.com/Jaswant06/shiftai-router/actions/workflows/tests.yml/badge.svg)](https://github.com/Jaswant06/shiftai-router/actions/workflows/tests.yml)
+![python](https://img.shields.io/badge/python-3.10%2B-blue)
+![license](https://img.shields.io/badge/license-MIT-green)
+
 ShiftAI is an installable router for local language models. For every prompt it
 predicts how well each model on your computer would answer, then sends the
 prompt to the **cheapest model that keeps the quality you asked for**, instead
@@ -251,7 +255,7 @@ ollama pull nomic-embed-text
 Install ShiftAI and measure your machine:
 
 ```bash
-pip install -e .
+pip install "shiftai-router[server] @ git+https://github.com/Jaswant06/shiftai-router"
 shiftai models     # what is installed and loaded
 shiftai setup      # measures each model on this machine (a few minutes)
 ```
@@ -274,11 +278,10 @@ WebUI, editor plugins, your own Python code) can then send its requests to
 ShiftAI instead, by changing one URL, and every request is routed to the right
 local model. Nothing leaves your machine.
 
-The API needs two extra packages (FastAPI and Uvicorn), so it is an optional
-install. From the project folder:
+The API needs two extra packages (FastAPI and Uvicorn), included by the
+`[server]` option in the install command above:
 
 ```bash
-pip install -e ".[server]"     # ShiftAI plus the API packages
 shiftai serve                  # API at http://127.0.0.1:8800/v1, default target 90%
 ```
 
@@ -311,7 +314,8 @@ print(reply.model)  # the local model that actually answered, e.g. qwen3.5:4b
 ## Reproduce the research
 
 ```bash
-pip install -e ".[bench,dev]"
+git clone https://github.com/Jaswant06/shiftai-router && cd shiftai-router
+pip install -e ".[bench,dev,server]"
 python scripts/build_question_set.py      # 3,000 benchmark questions
 python scripts/build_open_set.py          # 600 Dolly + 200 MBPP prompts
 shiftai bench --models qwen3.5:0.8b qwen3.5:2b qwen3.5:4b qwen3.5:9b --out runs/qwen35
