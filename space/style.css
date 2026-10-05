@@ -176,3 +176,7 @@ label.label { display: block; margin-bottom: 10px; }
   .steps li { display: grid; grid-template-columns: 28px 1fr; }
   .steps .num { grid-row: span 2; margin: 1px 0 0; }
 }
+
+.download-note { display: flex; gap: 12px; align-items: baseline; max-width: 660px; margin: 24px 0 0;
+  font-size: 13px; line-height: 1.55; color: var(--muted); }
+.download-note .num { flex: none; font-size: 11px; color: var(--ink); border: 1px solid var(--line); border-radius: 999px; padding: 1px 9px; }

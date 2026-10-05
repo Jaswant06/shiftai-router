@@ -18,6 +18,7 @@ each prompt to the smallest local language model that can answer it well.
 - **Route a prompt:** type anything and see which model the real router would choose, why, and each model's
   predicted quality and estimated time on an Apple M5. The router runs entirely in your browser: the same
   embedding model (nomic-embed-text, via Transformers.js) and the same trained router as the Python package.
+  The first route needs a one-time 274 MB download of that model, which the browser keeps for later visits.
 - **Replay real answers:** held-out test prompts with the answers all four models actually gave, how they were
   graded, and the measured time and energy.
 - **Results:** quality versus energy on 760 held-out prompts.

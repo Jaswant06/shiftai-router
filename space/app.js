@@ -1,4 +1,4 @@
-import { decide, embed, loadEmbedder } from './router.js?v=7';
+import { decide, embed, loadEmbedder } from './router.js?v=9';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -8,7 +8,7 @@ const secs = (x) => `${x < 10 ? x.toFixed(1) : Math.round(x)} s`;
 
 // Each example button draws a different prompt from its pool on every click.
 const EXAMPLES = {
-  'an email': [
+  'An email': [
     'Write a short, polite email to my landlord asking when the broken heater in my apartment will be fixed.',
     "Draft an email to my manager asking to move Friday's one-on-one to next Tuesday afternoon.",
     'Write a friendly follow-up email to a recruiter I interviewed with last week, asking about next steps.',
@@ -18,7 +18,7 @@ const EXAMPLES = {
     'Write a thank-you email to a colleague who helped me prepare for a big presentation.',
     'Write an email to a professor asking whether there is still space in their machine learning course next term.',
   ],
-  'a word problem': [
+  'A word problem': [
     'A train leaves at 3:15 pm and travels 210 km at 84 km/h. At what time does it arrive?',
     'A shirt costs $40 and is on sale for 25% off. Sales tax is 13%. What is the final price?',
     'Maya reads 18 pages a day. Her book has 432 pages. How many weeks will it take her to finish it?',
@@ -28,7 +28,7 @@ const EXAMPLES = {
     'Four friends split a $96 dinner bill plus a 15% tip equally. How much does each person pay?',
     "A rectangle's length is 4 cm more than its width, and its perimeter is 56 cm. What is its area?",
   ],
-  'multiple choice': [
+  'Multiple choice': [
     "Which gas makes up most of Earth's atmosphere?\nA. Oxygen\nB. Nitrogen\nC. Carbon dioxide\nD. Argon",
     'Which data structure gives constant-time average lookup by key?\nA. Linked list\nB. Binary search tree\nC. Hash table\nD. Stack',
     'Who wrote the novel Pride and Prejudice?\nA. Charlotte Brontë\nB. Jane Austen\nC. Mary Shelley\nD. George Eliot',
@@ -38,7 +38,7 @@ const EXAMPLES = {
     'Which planet has the shortest year?\nA. Mercury\nB. Venus\nC. Mars\nD. Jupiter',
     'Which HTTP status code means the requested resource was not found?\nA. 200\nB. 301\nC. 404\nD. 500',
   ],
-  'some code': [
+  'Some code': [
     'Write a Python function that returns the n-th Fibonacci number using iteration.',
     'Write a Python function that checks whether a string is a palindrome, ignoring case and spaces.',
     'Write a SQL query that returns the five customers with the highest total order value.',
@@ -65,7 +65,7 @@ function gearbox(key, models, chosen) {
   gearPositions[key] = to;
   const stops = models.map((m) => `<div class="stop${m === chosen ? ' on' : ''}"><span class="knob"></span><span class="gear">${size(m)}</span></div>`).join('');
   return `<div class="gearbox" data-from="${from}" data-to="${to}"><div class="track"></div><span class="shifter"></span>${stops}</div>
-    <div class="gearcaps"><span>smaller · faster</span><span>larger · more capable</span></div>`;
+    <div class="gearcaps"><span>Smaller · Faster</span><span>Larger · More capable</span></div>`;
 }
 
 function shiftGears(root) {
@@ -84,20 +84,20 @@ function status(text) { $('status').textContent = text; }
 function progress(event) {
   if (event.status === 'progress' && event.file?.endsWith('.onnx') && event.total) {
     const mb = (b) => Math.round(b / 1e6);
-    status(`downloading the router's embedding model, first visit only · ${mb(event.loaded)} of ${mb(event.total)} MB · meanwhile, the replay tab works right away`);
+    status(`Downloading the router's embedding model (one time only) · ${mb(event.loaded)} of ${mb(event.total)} MB · Meanwhile, Replay real answers works right away`);
   } else if (event.status === 'ready') {
     status('');
   }
 }
 
 function warmUp() {
-  loadEmbedder(progress).catch((err) => status(`could not load the embedding model: ${err.message}`));
+  loadEmbedder(progress).catch((err) => status(`Could not load the embedding model: ${err.message}`));
 }
 
 function targetHint(value) {
-  if (value >= 97) return `keep ${value}% of the 9B's answer quality on average · almost always the 9B`;
-  if (value <= 84) return `keep ${value}% of the 9B's answer quality on average · mostly smaller, faster models`;
-  return `keep ${value}% of the 9B's answer quality on average · lower is faster, higher is safer`;
+  if (value >= 97) return `Keep ${value}% of the 9B's answer quality on average · Almost always the 9B`;
+  if (value <= 84) return `Keep ${value}% of the 9B's answer quality on average · Mostly smaller, faster models`;
+  return `Keep ${value}% of the 9B's answer quality on average · Lower is faster, higher is safer`;
 }
 
 function reasonText(d) {
@@ -121,7 +121,7 @@ function reasonText(d) {
 function renderDecision(d, ms) {
   const big = d.largest;
   const saved = 1 - d.seconds[d.model] / d.seconds[big];
-  const speed = d.model === big ? `the same model as always using the ${size(big)}` : `about ${pct(saved)} faster than always using the ${size(big)}`;
+  const speed = d.model === big ? `The same model as always using the ${size(big)}` : `About ${pct(saved)} faster than always using the ${size(big)}`;
   const barAt = d.bar * d.predicted[big];
   const rows = d.models.map((m) => `
     <div class="qrow${m === d.model ? ' chosen' : ''}">
@@ -145,10 +145,10 @@ function renderDecision(d, ms) {
         <div class="qrow qhead"><span>model</span><span>chance of a good answer</span><span></span><span class="r">vs ${size(big)}</span><span class="r">time</span></div>
         ${rows}
       </div>
-      <p class="legend"><b>chance of a good answer</b> how often each model got similar test prompts right ·
-        <b>tick</b> the lowest the router accepts for your target ·
-        <b>time</b> estimated to answer on an Apple M5, including loading the model</p>
-      <div class="meta">target ${d.quality}% · ${d.kind === 'choice' ? 'multiple-choice' : 'free-form'} prompt, ${familiarity} · decided in ${Math.round(ms)} ms in your browser</div>
+      <p class="legend"><b>Chance of a good answer:</b> how often each model got similar test prompts right ·
+        <b>Tick:</b> the lowest the router accepts for your target ·
+        <b>Time:</b> estimated to answer on an Apple M5, including loading the model</p>
+      <div class="meta">Target ${d.quality}% · ${d.kind === 'choice' ? 'Multiple-choice' : 'Free-form'} prompt, ${familiarity} · Decided in ${Math.round(ms)} ms in your browser</div>
     </div>
     ${answerNote(d)}`;
   $('result').querySelector('[data-goto]').addEventListener('click', () => showTab('replay'));
@@ -164,11 +164,11 @@ function answerNote(d) {
       <div class="eyebrow">where is the answer?</div>
       <p class="reason">This page only makes the routing decision; there are no language models behind it. Installed on your
         own computer, ShiftAI hands the prompt to Qwen3.5 ${size(d.model)} through Ollama and prints its answer. To read real
-        answers the models gave, open <button class="linklike" type="button" data-goto="replay">replay real answers</button>.</p>
+        answers the models gave, open <button class="linklike" type="button" data-goto="replay">Replay real answers</button>.</p>
       <pre class="cmd">pip install "shiftai-router[server] @ git+https://github.com/Jaswant06/shiftai-router"
 shiftai setup
 shiftai ask "${esc(quoted)}" --quality ${d.quality}</pre>
-      <a class="small" href="https://github.com/Jaswant06/shiftai-router#run-it-locally" target="_blank" rel="noopener">full setup, including the Ollama models</a>
+      <a class="small" href="https://github.com/Jaswant06/shiftai-router#run-it-locally" target="_blank" rel="noopener">Full setup, including the Ollama models</a>
     </div>`;
 }
 
@@ -186,7 +186,7 @@ async function route() {
     const d = decide(router, prompt, vec, Number($('target').value));
     renderDecision(d, performance.now() - start);
   } catch (err) {
-    status(`something went wrong: ${err.message}`);
+    status(`Something went wrong: ${err.message}`);
   } finally {
     button.disabled = false;
   }
@@ -195,9 +195,9 @@ async function route() {
 // ---------- replay real answers ----------
 
 function grade(family, q) {
-  if (family === 'Coding') return q >= 0.5 ? 'passes tests' : 'fails tests';
-  if (family === 'Open-ended') return q > 0 ? `acceptable · p=${q.toFixed(2)}` : 'not acceptable';
-  return q >= 0.5 ? 'correct' : 'wrong';
+  if (family === 'Coding') return q >= 0.5 ? 'Passes tests' : 'Fails tests';
+  if (family === 'Open-ended') return q > 0 ? `Acceptable · p=${q.toFixed(2)}` : 'Not acceptable';
+  return q >= 0.5 ? 'Correct' : 'Wrong';
 }
 
 function answerMeta(item, a) {
@@ -311,4 +311,4 @@ async function main() {
   slider($('replay-target'), $('replay-target-out'), renderReplay);
 }
 
-main().catch((err) => status(`could not load the router: ${err.message}`));
+main().catch((err) => status(`Could not load the router: ${err.message}`));

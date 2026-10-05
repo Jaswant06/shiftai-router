@@ -45,7 +45,9 @@ gains are at strict quality targets and on workloads unlike its training mix;
 and where a simple baseline does just as well.
 
 **[Try the live demo](https://huggingface.co/spaces/JaswantDev/shiftai-router)**: the real router running in your browser, plus
-the actual answers all four models gave on held-out test prompts.
+the actual answers all four models gave on held-out test prompts. Routing your own
+prompt needs a one-time 274 MB download of the embedding model, which the browser
+keeps for later visits.
 
 ## Why route at all
 

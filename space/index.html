@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
   <main class="page">
@@ -18,9 +18,11 @@
       <p>Most prompts don't need the biggest model. ShiftAI sends each one to the <em>smallest local model that can
         answer it well</em>, so you get answers faster and spend less energy, at a quality level you choose.</p>
       <nav>
-        <a href="https://github.com/Jaswant06/shiftai-router" target="_blank" rel="noopener">code &amp; install</a>
-        <a href="https://github.com/Jaswant06/shiftai-router#results" target="_blank" rel="noopener">full results</a>
+        <a href="https://github.com/Jaswant06/shiftai-router" target="_blank" rel="noopener">Code &amp; install</a>
+        <a href="https://github.com/Jaswant06/shiftai-router#results" target="_blank" rel="noopener">Full results</a>
       </nav>
+      <p class="download-note"><span class="num">274 MB</span> Routing your own prompt needs a one-time download of the
+        router's embedding model, saved by your browser for later visits. Replay real answers and Results work instantly.</p>
       <ol class="steps">
         <li><span class="num">01</span><b>Reads the prompt</b>Turns it into an embedding and finds the most similar prompts it learned from.</li>
         <li><span class="num">02</span><b>Predicts each model</b>Estimates how often each local model, from 0.8B to 9B parameters, gets prompts like this right.</li>
@@ -29,9 +31,9 @@
     </header>
 
     <div class="tabs" role="tablist">
-      <button role="tab" class="tab active" data-tab="route" aria-selected="true">route a prompt</button>
-      <button role="tab" class="tab" data-tab="replay" aria-selected="false">replay real answers</button>
-      <button role="tab" class="tab" data-tab="results" aria-selected="false">results</button>
+      <button role="tab" class="tab active" data-tab="route" aria-selected="true">Route a prompt</button>
+      <button role="tab" class="tab" data-tab="replay" aria-selected="false">Replay real answers</button>
+      <button role="tab" class="tab" data-tab="results" aria-selected="false">Results</button>
     </div>
 
     <section id="tab-route" class="panel">
@@ -49,8 +51,8 @@
         </label>
         <button id="route" class="primary">Route →</button>
       </div>
-      <p class="fineprint">Runs entirely in your browser: your prompt is never sent anywhere. The first route downloads the
-        router's embedding model (274 MB, once).</p>
+      <p class="fineprint">Runs entirely in your browser: your prompt is never sent anywhere. Your first route needs the one-time
+        274 MB download.</p>
       <div id="status" class="status num"></div>
       <div id="result"><div class="placeholder">Write a prompt or pick an example, then press Route to see which model would answer and why.</div></div>
     </section>
@@ -62,7 +64,7 @@
       <div class="controls replay-controls">
         <label class="select">
           <span class="label">held-out test prompt</span>
-          <span class="select-row"><select id="pick"></select><button id="shuffle" class="chip" type="button">random</button></span>
+          <span class="select-row"><select id="pick"></select><button id="shuffle" class="chip" type="button">Random</button></span>
         </label>
         <label class="slider">
           <span class="label">quality target</span>
@@ -102,8 +104,8 @@
       </div>
     </section>
 
-    <footer class="foot">built by Jaswant Singh · <a href="https://github.com/Jaswant06/shiftai-router" target="_blank" rel="noopener">github</a> · MIT</footer>
+    <footer class="foot">Built by Jaswant Singh · <a href="https://github.com/Jaswant06/shiftai-router" target="_blank" rel="noopener">GitHub</a> · MIT</footer>
   </main>
-  <script type="module" src="app.js?v=7"></script>
+  <script type="module" src="app.js?v=9"></script>
 </body>
 </html>
