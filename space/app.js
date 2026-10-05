@@ -1,4 +1,4 @@
-import { decide, embed, loadEmbedder } from './router.js?v=6';
+import { decide, embed, loadEmbedder } from './router.js?v=7';
 
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -84,7 +84,7 @@ function status(text) { $('status').textContent = text; }
 function progress(event) {
   if (event.status === 'progress' && event.file?.endsWith('.onnx') && event.total) {
     const mb = (b) => Math.round(b / 1e6);
-    status(`downloading the router's embedding model, only the first time · ${mb(event.loaded)} of ${mb(event.total)} MB`);
+    status(`downloading the router's embedding model, first visit only · ${mb(event.loaded)} of ${mb(event.total)} MB · meanwhile, the replay tab works right away`);
   } else if (event.status === 'ready') {
     status('');
   }
@@ -291,7 +291,10 @@ async function main() {
     $('prompt').value = randomFrom(EXAMPLES[chip.textContent], $('prompt').value);
     route();
   }));
+  // Start the one-time model download as soon as someone shows interest in routing.
   $('prompt').addEventListener('focus', warmUp, { once: true });
+  $('chips').addEventListener('pointerenter', warmUp, { once: true });
+  $('route').addEventListener('pointerenter', warmUp, { once: true });
   $('prompt').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) route(); });
   $('route').addEventListener('click', route);
   slider($('target'), $('target-out'), (v) => { $('target-hint').textContent = targetHint(v); });
