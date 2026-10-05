@@ -268,14 +268,21 @@ shiftai ask "What is 12 x 12?" --dry-run   # show the decision only
 
 ## Use it from any app
 
-ShiftAI includes an OpenAI-compatible server, so apps that already talk to
-OpenAI or a local OpenAI-style endpoint (Open WebUI, editor plugins, your own
-scripts) can use it by changing one URL:
+`shiftai serve` starts a small web API on your own computer that speaks the
+same format as OpenAI's API. Any app or script that can talk to OpenAI (Open
+WebUI, editor plugins, your own Python code) can then send its requests to
+ShiftAI instead, by changing one URL, and every request is routed to the right
+local model. Nothing leaves your machine.
+
+The API needs two extra packages (FastAPI and Uvicorn), so it is an optional
+install. From the project folder:
 
 ```bash
-pip install -e ".[server]"
-shiftai serve                  # http://127.0.0.1:8800/v1, default target 90%
+pip install -e ".[server]"     # ShiftAI plus the API packages
+shiftai serve                  # API at http://127.0.0.1:8800/v1, default target 90%
 ```
+
+Then, from any OpenAI client:
 
 ```python
 from openai import OpenAI
