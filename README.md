@@ -4,14 +4,24 @@
 ![python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
-ShiftAI is an installable router for local language models. For every prompt it
-predicts how well each model on your computer would answer, then sends the
-prompt to the **cheapest model that keeps the quality you asked for**, instead
-of running everything through the largest model. Easy prompts go to a small,
-fast model; hard prompts go to a big one.
+**ShiftAI decides which AI model should answer each prompt.**
 
-> Ask a question -> ShiftAI predicts each model's quality and cost on *your*
-> machine -> the smallest model that is good enough answers.
+If you run language models on your own computer, you usually have several
+sizes. Small ones answer in a second or two but make more mistakes; big ones are
+smarter but slower and use far more energy. Most apps send every request to one
+model. ShiftAI reads each prompt first, predicts which of your models would
+answer it well, and sends it to the **smallest model that still meets the
+quality level you choose**. Simple requests get fast answers, and hard ones
+still reach the big model.
+
+Technically, ShiftAI is a cost-aware LLM router for local inference with
+[Ollama](https://ollama.com). A capability predictor (k-means clustering over
+`nomic-embed-text` sentence embeddings) estimates each model's chance of giving
+a good answer, and a routing policy tuned with 5-fold cross-validation picks
+the cheapest model that meets a relative quality target, using latency and
+energy measured on your own hardware. It ships as a Python package with a CLI,
+an OpenAI-compatible REST API (FastAPI, streaming), a Docker image and an
+in-browser demo, with unit tests running in GitHub Actions CI.
 
 ```text
 $ shiftai ask "Write a polite two-sentence email declining a meeting on Friday." --quality 90 --explain
@@ -29,8 +39,10 @@ Prompt familiarity: high   Router overhead: 35 ms
 ShiftAI kept **89.9%** of the 9B model's quality while answering **44% faster**
 with **40% less energy**. On everyday open-ended requests (writing, questions,
 brainstorming, summaries) it kept **94%** of the 9B's quality at **46% less
-latency** and **36% less energy**. [Full results below](#results), including
-where a simple baseline does just as well.
+latency** and **36% less energy**. Against simpler strategies, its clearest
+gains are at strict quality targets and on workloads unlike its training mix;
+[how it compares](#how-it-compares-with-simpler-strategies) shows where it wins
+and where a simple baseline does just as well.
 
 **[Try the live demo](https://huggingface.co/spaces/JaswantDev/shiftai-router)**: the real router running in your browser, plus
 the actual answers all four models gave on held-out test prompts.
@@ -62,17 +74,19 @@ local hardware profile + loaded models + battery ----> estimated cost per model
 ```
 
 - **Capability predictor:** prompts are split by type (multiple choice or
-  open-ended) and grouped into clusters of similar prompts using a
-  `nomic-embed-text` embedding. Each cluster stores every model's measured
-  quality, shrunk toward the type average so small clusters stay sensible. A
+  open-ended) and grouped into clusters of similar prompts with k-means over
+  `nomic-embed-text` embeddings. Each cluster stores every model's measured
+  quality, shrunk toward the type average (empirical-Bayes smoothing) so small
+  clusters stay sensible. A
   new prompt gets the estimates of its nearest cluster
   (`src/shiftai/predictor.py`). A per-prompt logistic regression was tried and
   rejected; see [what did not work](#what-did-not-work).
 - **Relative quality target:** `--quality 90` means "keep at least 90% of what
   the largest model would score". The router takes the cheapest model predicted
   to reach at least (1 - delta) of the largest model's quality. For each target,
-  the number of clusters and delta are tuned on out-of-fold predictions so the
-  routed quality over the whole workload meets the target
+  the number of clusters and delta are tuned on out-of-fold predictions from
+  5-fold cross-validation, so the routed quality over the whole workload meets
+  the target
   (`src/shiftai/policy.py`). `--quality 100` simply uses the largest model.
 - **Cost model:** `shiftai setup` measures each model's cold load time, prompt
   speed, generation speed, memory and power on your machine
@@ -154,9 +168,10 @@ correction uses.
 
 20% of the prompts (760: 606 benchmark, 117 open-ended, 37 coding) are held out
 as a test set that nothing touches until the final evaluation. On the other
-80%, 5-fold out-of-fold predictions choose the number of clusters and tune
-delta for each target. Because every model answered every prompt, any routing
-policy can be scored exactly on the test set and compared with:
+80%, 5-fold cross-validation (out-of-fold predictions) chooses the number of
+clusters and tunes delta for each target. Because every model answered every
+prompt, any routing policy can be scored exactly on the test set, with 95%
+bootstrap confidence intervals, and compared with:
 
 - each single model on its own (including always-smallest and always-largest)
 - a **random split**: send each prompt at random to one of two models, in the
@@ -206,10 +221,9 @@ What the results show:
   99% targets, landed at 89.9% for 90%, and fell 1.4 and 1.7 points short at
   80% and 85%. With 760 test prompts the 95% confidence interval is about plus
   or minus 3 points.
-- **Against a well-tuned random split, ShiftAI is about even.** Between 80% and
-  95% the two trade within a few points, with the random split saving slightly
-  more and ShiftAI keeping slightly more quality. At 99% ShiftAI saves more
-  (13.8% versus 10.7%) and is the only one of the two that meets the target.
+- **Against a well-tuned random split, ShiftAI is about even on the overall
+  average** between 80% and 95%, and ahead at 99%. The next section shows where
+  the difference lies.
 - **The strongest effect is on math.** The 4B is nearly as good as the 9B on
   GSM8K but much faster, which is why the benchmark prompts still save 29% at
   the 99% target.
@@ -219,6 +233,50 @@ What the results show:
 
 The full metrics, including p95 latency and confidence intervals, are in
 [`results/`](results/); `scripts/train_router.py` regenerates every number.
+
+## How it compares with simpler strategies
+
+A router has to beat the obvious alternatives, not only the largest model. On
+the 760 test prompts (quality kept · faster · less energy, relative to always
+using the 9B):
+
+| Strategy | How it chooses | At a 90% target | At a 99% target |
+|---|---|---|---|
+| Always the 9B | one model for everything | 100% · 0% · 0% | 100% · 0% · 0% |
+| Always the 4B | one smaller model for everything | 95.7% · 38.8% · 31.8% | misses (95.7% quality) |
+| Random split | a fixed share of prompts to each of two models, tuned on development data | 89.1% · 46.0% · 43.8% | misses (98.6% quality) |
+| Route by prompt type | multiple choice versus everything else, no embedding | 89.0% · 39.8% · 33.6% | 100% · 0% · 0% |
+| **ShiftAI** | per-prompt prediction from embedding clusters | **89.9% · 43.7% · 40.0%** | **99.6% · 13.8% · 13.0%** |
+| Oracle (upper bound) | knows in hindsight which model was right | 102.7% · 67.6% · 65.7% | 102.7% · 67.6% · 65.7% |
+
+**On the overall average, simple strategies come close between 80% and 95%.**
+At 80% the best ShiftAI can do is always use the 2B, at 95% always the 4B, and a
+tuned random split stays within a few points at 85% and 90%. ShiftAI's
+advantage shows in three places:
+
+1. **Strict quality targets.** A strategy that does not read the prompt cannot
+   tell hard prompts from easy ones, so at a 99% target it has to send nearly
+   everything to the 9B. ShiftAI sends math word problems to the 4B, which is
+   nearly as accurate there, and keeps hard prompts on the 9B: 96.7% of the
+   prompts that only the 9B answers correctly reach it, against 73.6% for the
+   random split. It is the only strategy in the table that meets 99% while
+   saving time.
+2. **Workloads that differ from the training mix.** A random split sends the
+   same share of prompts to each model whatever they ask, and that share was
+   tuned on a mix that is about 80% benchmark questions. Run on everyday writing
+   and questions alone, at the 90% setting it keeps 84% of the 9B's quality;
+   ShiftAI keeps 94%, because it recognizes that these prompts need a bigger
+   model. On coding tasks alone it is 76% versus 71%. The trade runs the other
+   way on multiple-choice questions, where the random split keeps more quality
+   (91% versus 88%) and ShiftAI saves more time (62% versus 54% faster).
+3. **What a fixed rule cannot see.** ShiftAI checks which models are already
+   loaded in memory, ranks models by energy when running on battery, escalates
+   prompts unlike its training data, and explains every decision.
+
+Every target and workload is in [`results/baselines.md`](results/baselines.md)
+(random split averaged over 200 seeds), generated by
+`scripts/compare_baselines.py`. Other designs that were tried and measured are
+below.
 
 ## What did not work
 
@@ -238,9 +296,16 @@ The first two are reproducible with `scripts/ablations.py`.
 
 ## Tech stack
 
-Python, Ollama, FastAPI, Docker, NumPy, scikit-learn (training only),
-nomic-embed-text, psutil, httpx, Matplotlib, pytest. The browser demo uses
-Transformers.js and plain JavaScript.
+- **Machine learning:** Python, NumPy, scikit-learn (k-means clustering),
+  sentence embeddings with nomic-embed-text, LLM-as-a-judge evaluation
+- **LLM runtime:** Ollama with the Qwen 3.5 model family (0.8B to 9B), Gemma as
+  the judge model
+- **Serving:** FastAPI and Uvicorn (OpenAI-compatible REST API with streaming),
+  httpx, Docker
+- **Measurement:** powermetrics, nvidia-smi and RAPL for energy; psutil for
+  battery, CPU and memory; Matplotlib for charts
+- **Testing:** pytest unit tests, GitHub Actions CI on Python 3.10, 3.12 and 3.13
+- **Demo:** JavaScript, Transformers.js (ONNX Runtime Web), Hugging Face Spaces
 
 ## Run it locally
 
@@ -340,6 +405,7 @@ shiftai bench --models qwen3.5:0.8b qwen3.5:2b qwen3.5:4b qwen3.5:9b --questions
 python scripts/judge_pointwise.py --run runs/qwen35-open --questions data/open.jsonl
 cp results/judge_validation/reference_pointwise.jsonl runs/qwen35-open/
 python scripts/train_router.py --run runs/qwen35 runs/qwen35-open --questions data/questions.jsonl data/open.jsonl
+python scripts/compare_baselines.py --run runs/qwen35 runs/qwen35-open --questions data/questions.jsonl data/open.jsonl
 pytest
 ```
 
@@ -373,6 +439,7 @@ shiftai-router/
 │   ├── judge_pointwise.py, judge_run.py   # pointwise and side-by-side judging
 │   ├── label_pairs.py, judge_agreement.py # blind labelling and agreement
 │   ├── train_router.py  # train, evaluate, write results/
+│   ├── compare_baselines.py  # ShiftAI versus a random split, per workload
 │   └── ablations.py     # rejected designs, with numbers
 ├── data/                # sampled prompt sets (JSONL)
 ├── results/             # metrics, tables, charts, judge validation labels
@@ -420,6 +487,7 @@ MIT, see [LICENSE](LICENSE).
 
 ---
 
-Keywords: llm router, local llm, ollama, model routing, inference optimization,
-energy efficient ai, on-device ai, adaptive inference, small language models,
-llm as a judge, Python.
+Keywords: LLM router, model routing, local LLM, Ollama, inference optimization,
+cost-aware inference, energy-efficient AI, on-device AI, small language models,
+sentence embeddings, k-means clustering, LLM-as-a-judge, model evaluation,
+OpenAI-compatible API, FastAPI, Docker, Python, machine learning.
